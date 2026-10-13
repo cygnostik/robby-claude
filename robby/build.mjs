@@ -8,7 +8,7 @@ import * as G from "../vendor/anatomy/kit/lathe.mjs";
 import { tubePieces, tubeSvg, crossingsOf } from "../vendor/anatomy/kit/tube.mjs";
 import * as A from "../vendor/anatomy/kit/audit.mjs";
 import * as S from "./shape.mjs";
-import { hexaPaths, flapCorners } from "./hexa.mjs";
+import { hexaPaths, flapCorners, convexPaths } from "./hexa.mjs";
 import { bundle } from "./inline.mjs";
 import { pageOf } from "./page.mjs";
 
@@ -38,15 +38,15 @@ const CAB_TOP = PLATE_TOP + 88;
 const CAB_HIGH = PLATE_TOP + 99;
 
 const PIECES = {
-  dome: { name: "Dome and radar mast", say: "dome · Plexiglas · 3 weeks in the model shop", move: [0, 0, 74] },
-  head: { name: "Head: voice grille, relay keys, ears", say: "head · 9 neon tubes · 6 relay keys · 2 scanners", move: [0, 0, 56] },
+  dome: { name: "Clear shell and radar mast", say: "clear shell · Plexiglas cap and front window · 3 weeks in the model shop", move: [0, 0, 88] },
+  head: { name: "Head: hood, voice tubes, keys and ears", say: "head · black hood · voice tubes · 6 relay keys · 2 rotating rings", move: [0, 0, 56] },
   brain: { name: "Gyro tower and pilot lamp", say: "gyro tower · 3 wire gyros in planetary orbit", move: null },
-  armR: { name: "Arms and claws", say: "arm · bellows forearm · 3-finger claw", move: [20, 20, 30] },
-  armL: { name: "Left arm and claw", say: "arm · bellows forearm · 3-finger claw", move: [-20, 20, 30] },
-  chest: { name: "Chest barrel and heart box", say: "chest · sample door · star · quad light · 5 keys", move: [0, 0, 38] },
+  armR: { name: "Arms and claws", say: "arm · flexible sleeve & ball socket · 3-finger claw", move: [20, 20, 30] },
+  armL: { name: "Left arm and claw", say: "arm · flexible sleeve & ball socket · 3-finger claw", move: [-20, 20, 30] },
+  chest: { name: "Chest barrel and indicator panel", say: "chest · analyzing hopper · star · quad light · 4 keys", move: [0, 0, 38] },
   core: { name: "Laboratory core (speculative)", say: "lab core · analyzer drum · relays D-12,000–18,500", move: [0, 0, 0] },
   pelvis: { name: "Pelvis and hip hinges", say: "pelvis · hinged at the hips · hides the operator's knees", move: [0, 0, 0] },
-  legs: { name: "Legs and feet", say: "legs · 3 globes a side on a foot · cable in the right foot", move: [0, 0, 0] },
+  legs: { name: "Legs and feet", say: "legs · 3 globes a side on an oval shoe · cable in the right shoe", move: [0, 0, 0] },
   stand: { name: "Riser, gauge and console", say: "console · mic to voice relay to neon", move: [0, 0, 0] },
 };
 PIECES.brain.move = PIECES.head.move;
@@ -61,8 +61,8 @@ const P = k.fitProjection(
     [0, 0, S.HEIGHT + PIECES.dome.move[2] + 1],
     [CONSOLE.x + CONSOLE.w, CONSOLE.y, CAB_HIGH],
     [CONSOLE.x + CONSOLE.w, CONSOLE.y + CONSOLE.d, PLATE_TOP],
-    [-17, 0, 211 + 74],
-    [17, 0, 211 + 74],
+    [-17, 0, 211 + PIECES.dome.move[2]],
+    [17, 0, 211 + PIECES.dome.move[2]],
     [-60, 0, 170],
     [60, 0, 170],
   ],
@@ -252,17 +252,47 @@ for (const [x, y] of byDepth(k.corners(PLATE, 24))) {
   slab("stand", { x: rider.x + rider.w / 2 - 1, y: rider.y + rider.d, w: 2, d: 1.4, r: 0.4 }, S.HEIGHT + 0.6, 2, { tone: "mid", steps: 2, bevel: 0, name: "stand.gauge-screw" });
 }
 
-// ---------------------------------------------------------------- legs and feet
+// ---------------------------------------------------------------- legs: oval shoes on soles, squat globes
+// Everything on the far side of a plane from its normal: used to cut parts that end on a slope.
+function beyond(point, normal) {
+  const n = G.unit3(normal);
+  const F = G.frameAlong(point, n);
+  return A.orientedBox(G.sub3(point, G.mul3(n, 400)), [F.u, F.v, n], [400, 400, 400], { name: "cut" });
+}
 const LEG_SHAPES = {};
 for (const side of [-1, 1]) {
   const x = side * S.LEG_X;
-  const foot = bodyZ("legs", x, 0, S.FOOT.body, S.FOOT.z0, S.FOOT.z1, { seams: [6], name: `legs.foot${side > 0 ? "R" : "L"}` });
-  LEG_SHAPES[side] = { foot };
+  const tag = side > 0 ? "R" : "L";
+  // Sole: the shoe's footprint plus a 0.7 cm welt.
+  const knots = S.SHOE.profile(40);
+  const ring = [[x, S.SHOE.s0 - 0.7]];
+  for (const [s, r] of knots) ring.push([x + r + 0.7, s]);
+  ring.push([x, S.SHOE.s1 + 0.7]);
+  for (const [s, r] of [...knots].reverse()) ring.push([x - r - 0.7, s]);
+  const soleId = `legs.sole${tag}`;
+  put("legs", [x, S.SHOE.mid, 0.5], Sv(k.extrude(ring, S.SOLE.z, S.SOLE.h, P, { convex: false, bevel: 0.3 }), { tone: "mid" }), { name: soleId, shapes: [record(A.extruded(ring, S.SOLE.z, S.SOLE.h, { name: soleId }))] });
+  // Shoe: turned about a heel-to-toe axis on the sole, so only its upper half shows.
+  const F = G.frameOf([x, 0, S.SHOE.axisZ], [0, 1, 0], [1, 0, 0], [0, 0, 1]);
+  const profile = knots;
+  const paths = G.solidOf(profile, F, P, { smooth: { slope: S.SHOE.slope, radius: S.SHOE.radius } });
+  const upper = [];
+  for (const [s, r] of knots) for (let j = 0; j <= 24; j++) upper.push(at(G.pointOf(F, s, r, (j / 24) * Math.PI)));
+  const clip = k.pathOf(G.hullOf(upper), true);
+  const shoeId = `legs.shoe${tag}`;
+  const shoe = record(A.solid(F, profile, { radius: S.SHOE.radius, name: shoeId, cut: [beyond([0, 0, S.SHOE.axisZ], [0, 0, 1])] }));
+  put("legs", [x, S.SHOE.mid, 6], `<clipPath id="rb-shoe${tag}"><path d="${clip}"/></clipPath><g clip-path="url(#rb-shoe${tag})">${Sv(paths, { tone: "hi" })}</g>`, { name: shoeId, shapes: [shoe] });
+  LEG_SHAPES[side] = { shoe, F };
+  // An ankle pad shaped to the shoe's back, carrying the bottom globe.
+  const a = S.NECK.r;
+  const start = (t) => {
+    const dx = a * Math.cos(t);
+    const r = S.SHOE.radius(a * Math.sin(t));
+    return S.SHOE.axisZ + Math.sqrt(Math.max(0, r * r - dx * dx));
+  };
+  saddle("legs", Fz(x, 0), a, start, S.PAD_TOP, shoe, { name: `legs.ankle${tag}` });
   for (const part of S.LEG_STACK.parts) {
-    if (part.neck) {
-      const F = Fz(x, 0);
-      discOn("legs", F, part.neck[0], part.neck[1], S.NECK.r, { tone: "mid", name: "legs.neck" });
-    } else {
+    if (part.neck) discOn("legs", Fz(x, 0), part.neck[0], part.neck[1], S.NECK.r, { tone: "mid", name: "legs.neck" });
+    else {
       const g = part.globe;
       bodyZ("legs", x, 0, g.body, g.z0, g.z1, { seams: [(g.z0 + g.z1) / 2], name: "legs.globe" });
     }
@@ -270,15 +300,17 @@ for (const side of [-1, 1]) {
 }
 
 // ---------------------------------------------------------------- pelvis and hip hinges
-const pelvis = bodyZ("pelvis", 0, 0, S.PELVIS.body, S.PELVIS.z0, S.PELVIS.z1, { seams: [90, 100], name: "pelvis.body", count: 30 });
+const HIP_Z = 96;
+const pelvis = bodyZ("pelvis", 0, 0, S.PELVIS.body, S.PELVIS.z0, S.PELVIS.z1, { seams: [HIP_Z, 104], name: "pelvis.body", count: 30 });
 for (const side of [-1, 1]) {
-  const F = G.frameOf([0, 0, 90], [side, 0, 0], [0, 1, 0], [0, 0, 1]);
-  const a = 4.6;
-  const start = (t) => Math.sqrt(Math.max(0, S.PELVIS.body.radius(90 + a * Math.sin(t)) ** 2 - (a * Math.cos(t)) ** 2));
-  saddle("pelvis", F, a, start, 26.8, pelvis, { name: "pelvis.hip-pad" });
+  const F = G.frameOf([0, 0, HIP_Z], [side, 0, 0], [0, 1, 0], [0, 0, 1]);
+  const a = 4.8;
+  const start = (t) => Math.sqrt(Math.max(0, S.PELVIS.body.radius(HIP_Z + a * Math.sin(t)) ** 2 - (a * Math.cos(t)) ** 2));
+  const s1 = 30.4;
+  saddle("pelvis", F, a, start, s1, pelvis, { name: "pelvis.hip-pad" });
   const facing = G.dot3(F.a, V) > 0.12;
-  discOn("pelvis", F, 26.8, 28.2, 5.4, { tone: "mid", name: "pelvis.hip-plate", extra: facing ? Dots(G.dotsOf(F, 28.2, 4.2, 6, P, { all: true }), { size: 0.42 }) : "" });
-  discOn("pelvis", F, 28.2, 29.6, 2.6, { tone: "hi", name: "pelvis.hip-pivot", inner: facing ? Ln(G.circleOf(F, 29.6, 1.1, P), { tone: "lo" }) : "" });
+  discOn("pelvis", F, s1, s1 + 1.4, 5.6, { tone: "mid", name: "pelvis.hip-plate", extra: facing ? Dots(G.dotsOf(F, s1 + 1.4, 4.4, 6, P, { all: true }), { size: 0.42 }) : "" });
+  discOn("pelvis", F, s1 + 1.4, s1 + 2.8, 2.8, { tone: "hi", name: "pelvis.hip-pivot", inner: facing ? Ln(G.circleOf(F, s1 + 2.8, 1.2, P), { tone: "lo" }) : "" });
 }
 
 // ---------------------------------------------------------------- laboratory core (speculative)
@@ -327,55 +359,53 @@ for (const [x, kind] of [[-13.6, "reflex"], [13.6, "pattern"]]) {
   discOn("core", F, top, top + 1.2, 3, { tone: "mid", name: `core.${kind}-cap`, extra: Dots([at([x, 1, top + 1.2])], { size: 0.5, tone: "hi" }) });
 }
 
-// ---------------------------------------------------------------- chest barrel, bearing, heart box
-const chest = bodyZ("chest", 0, 0, S.CHEST.body, S.CHEST.z0, S.CHEST.z1, { seams: [114, 140], name: "chest.barrel", count: 36, hollow: { wall: 1.6, floor: [20.6, 25, 1.6], roof: 1.6 } });
+// ---------------------------------------------------------------- chest barrel, bearing, analyzing hopper and indicator panel
+function ringOn(piece, F, s0, s1, rIn, rOut, { tone = "mid", name, extra = "", bias = 0 } = {}) {
+  const id = nameFor(name ?? `${piece}.ring`);
+  const shape = record(A.ring(F, s0, s1, rIn, rOut, { name: id }));
+  put(piece, G.add3(F.o, G.mul3(F.a, (s0 + s1) / 2)), Sv(G.ringBand(s0, s1, rIn, rOut, F, P), { tone }) + extra, { name: id, shapes: [shape], bias });
+  return shape;
+}
+const chest = bodyZ("chest", 0, 0, S.CHEST.body, S.CHEST.z0, S.CHEST.z1, { seams: [116, 140], name: "chest.barrel", count: 36, hollow: { wall: 1.6, floor: [25, 28.4, 1.6], roof: 1.6 } });
 // The barrel as a solid, used only to cut the pads seated on it.
 const chestSolid = Object.assign(A.solid(Fz(0, 0), S.sampled(S.CHEST.body, S.CHEST.z0, S.CHEST.z1, 36), { radius: S.CHEST.body.radius, name: "chest.barrel" }), { piece: "chest", ride: "chest", move: PIECES.chest.move });
 {
   const F = Fz(0, 0);
   const id = "chest.bearing";
   const shape = record(A.ring(F, S.BEARING.z0, S.BEARING.z1, S.BEARING.rIn, S.BEARING.rOut, { name: id }));
-  put("chest", [0, 0, S.BEARING.z0 + 0.6], Sv(G.ringBand(S.BEARING.z0, S.BEARING.z1, S.BEARING.rIn, S.BEARING.rOut, F, P), { tone: "mid" }) + Dots(G.dotsOf(F, S.BEARING.z1, 18, 24, P, { all: true }), { size: 0.4 }), { name: id, shapes: [shape] });
+  put("chest", [0, 0, S.BEARING.z0 + 0.5], Sv(G.ringBand(S.BEARING.z0, S.BEARING.z1, S.BEARING.rIn, S.BEARING.rOut, F, P), { tone: "mid" }) + Dots(G.dotsOf(F, S.BEARING.z1, 23.5, 28, P, { all: true }), { size: 0.4 }), { name: id, shapes: [shape] });
 }
-const HB = { x0: -12.5, x1: 12.5, z0: 115, z1: 139, face: 31.2 };
-const DOOR = { x0: -8, x1: 8, z0: 128.6, z1: 136.4 };
-const LIGHTS = { z: 123.2, r: 3.2, xs: [-4.8, 4.8] };
-const KEYS = { xs: [-8, -4, 0, 4, 8], w: 2.4, z0: 116.6, h: 2.6, d: 0.9 };
+// MGM's sheet calls the panel the "analyzing hopper & indicator panel": a box standing
+// proud of the barrel (10.74 in wide on the CAD), with the hopper door on top.
+const HB = { x0: -13.5, x1: 13.5, z0: 114, z1: 141, face: S.CHEST.R + 2.6 };
+const DOOR = { x0: -9.5, x1: 9.5, z0: 131.8, z1: 138.6 };
+const LIGHTS = { z: 125.4, r: 3.5, xs: [-5.4, 5.4] };
+const KEYS = { xs: [-7.2, -2.4, 2.4, 7.2], w: 3.2, z0: 116.8, h: 3, d: 1 };
 {
   const ring = [];
   ring.push([HB.x1, HB.face], [HB.x0, HB.face]);
   for (let index = 0; index <= 24; index++) {
     const x = HB.x0 + ((HB.x1 - HB.x0) * index) / 24;
-    ring.push([x, Math.sqrt(S.CHEST.body.radius(127) ** 2 - x * x)]);
+    ring.push([x, Math.sqrt(S.CHEST.R ** 2 - x * x)]);
   }
   const f = (x, z) => at([x, HB.face, z]);
-  const inset = roundRect(HB.x0 + 1.6, HB.z0 + 1.6, HB.x1 - 1.6, HB.z1 - 1.6, 1.2).map(([x, z]) => f(x, z));
+  const inset = roundRect(HB.x0 + 1.7, HB.z0 + 1.7, HB.x1 - 1.7, HB.z1 - 1.7, 1.3).map(([x, z]) => f(x, z));
   const ribs = [];
-  for (let x = HB.x0 + 2.4; x <= HB.x1 - 2.3; x += 1.05) {
-    ribs.push(k.pathOf([f(x, HB.z0), f(x, HB.z0 + 1.6)]), k.pathOf([f(x, HB.z1 - 1.6), f(x, HB.z1)]));
-  }
-  for (let z = HB.z0 + 2.4; z <= HB.z1 - 2.3; z += 1.05) {
-    ribs.push(k.pathOf([f(HB.x0, z), f(HB.x0 + 1.6, z)]), k.pathOf([f(HB.x1 - 1.6, z), f(HB.x1, z)]));
-  }
+  for (let x = HB.x0 + 2.5; x <= HB.x1 - 2.4; x += 1.05) ribs.push(k.pathOf([f(x, HB.z0), f(x, HB.z0 + 1.7)]), k.pathOf([f(x, HB.z1 - 1.7), f(x, HB.z1)]));
+  for (let z = HB.z0 + 2.5; z <= HB.z1 - 2.4; z += 1.05) ribs.push(k.pathOf([f(HB.x0, z), f(HB.x0 + 1.7, z)]), k.pathOf([f(HB.x1 - 1.7, z), f(HB.x1, z)]));
   const door = roundRect(DOOR.x0, DOOR.z0, DOOR.x1, DOOR.z1, 0.8).map(([x, z]) => f(x, z));
   const voidPath = k.pathOf(door, true);
-  const keyWell = roundRect(-10, KEYS.z0 - 0.6, 10, KEYS.z0 + KEYS.h + 0.6, 0.8).map(([x, z]) => f(x, z));
-  const body =
-    Ln(k.pathOf(inset, true), { tone: "lo" }) +
-    Ln(ribs.join(""), { tone: "lo" }) +
-    `<path class="rb-cavity" d="${voidPath}"/>` +
-    Ln(voidPath, { tone: "lo" }) +
-    Ln(k.pathOf(keyWell, true), { tone: "faint" });
+  const keyWell = roundRect(-9.6, KEYS.z0 - 0.6, 9.6, KEYS.z0 + KEYS.h + 0.6, 0.8).map(([x, z]) => f(x, z));
+  const body = Ln(k.pathOf(inset, true), { tone: "lo" }) + Ln(ribs.join(""), { tone: "lo" }) + `<path class="rb-cavity" d="${voidPath}"/>` + Ln(voidPath, { tone: "lo" }) + Ln(k.pathOf(keyWell, true), { tone: "faint" });
   const id = "chest.heartbox";
   const shape = record(A.extruded(ring, HB.z0, HB.z1 - HB.z0, { name: id, cut: [chestSolid], seated: true }));
   put("chest", [0, HB.face - 1, (HB.z0 + HB.z1) / 2], Sv(k.extrude(ring, HB.z0, HB.z1 - HB.z0, P, { convex: false, bevel: 0.5 }), { tone: "hi" }) + body, { name: id, shapes: [shape], bias: 0.5 });
 }
-// Sample door: a jaw-like flap hinged on its lower edge.
 const FLAP = { hinge: [0, HB.face, DOOR.z0 + 0.2], along: [1, 0, 0], up: [0, 0, 1], out: [0, 1, 0], width: DOOR.x1 - DOOR.x0 - 0.4, height: DOOR.z1 - DOOR.z0 - 0.4, thick: 0.6 };
 {
   const corners = flapCorners({ ...FLAP, angle: 0 });
   const paths = hexaPaths(corners, P);
-  const slot = roundRect(-3, DOOR.z1 - 2.4, 3, DOOR.z1 - 1.6, 0.4).map(([x, z]) => at([x, HB.face + 0.6, z]));
+  const slot = roundRect(-3.4, DOOR.z1 - 2.4, 3.4, DOOR.z1 - 1.6, 0.4).map(([x, z]) => at([x, HB.face + 0.6, z]));
   const id = "chest.door";
   const shape = record(A.box([DOOR.x0 + 0.2, HB.face, DOOR.z0 + 0.2], [DOOR.x1 - 0.2, HB.face + 0.6, DOOR.z1 - 0.2], { name: id }));
   put("chest", [0, HB.face + 0.3, (DOOR.z0 + DOOR.z1) / 2], `<g data-live="door">${Sv(paths, { tone: "hi" })}${Ln(k.pathOf(slot, true), { tone: "lo" })}</g>`, { name: id, shapes: [shape], bias: 1 });
@@ -384,7 +414,7 @@ for (const [index, x] of LIGHTS.xs.entries()) {
   const F = G.frameOf([x, HB.face, LIGHTS.z], [0, 1, 0], [1, 0, 0], [0, 0, 1]);
   const kind = index === 0 ? "star" : "quad";
   discOn("chest", F, 0, 0.8, LIGHTS.r, { tone: "mid", name: `chest.${kind}-bezel`, bias: 1 });
-  const lens = kind === "star" ? Ln(G.circleOf(F, 0.8, 2.3, P), { tone: "lo" }) : Ln(G.circleOf(F, 0.8, 2.6, P), { tone: "lo" });
+  const lens = Ln(G.circleOf(F, 0.8, LIGHTS.r - 0.8, P), { tone: "lo" });
   put("chest", G.add3(F.o, [0, 0.9, 0]), lens + `<g data-live="${kind}"></g>`, { name: `chest.${kind}`, bias: 1.2, shapes: [record(A.disc(F, 0.8, 0.86, LIGHTS.r - 0.4, { name: `chest.${kind}` }))] });
 }
 {
@@ -394,169 +424,363 @@ for (const [index, x] of LIGHTS.xs.entries()) {
     shapes.push(record(A.slab(plan, KEYS.z0, KEYS.h, { name: "chest.keys" }, 2)));
     return `<g data-key="${index}">${Sv(k.slabOf(plan, KEYS.z0, KEYS.h, P, 2, 0.2), { tone: "hi" })}</g>`;
   });
-  put("chest", [0, HB.face + 0.5, KEYS.z0 + 1.3], parts.join(""), { name: "chest.keys", bias: 1.1, shapes });
+  put("chest", [0, HB.face + 0.5, KEYS.z0 + 1.5], parts.join(""), { name: "chest.keys", bias: 1.1, shapes });
 }
-// Shoulder drums, seated on the barrel; the arm sockets sit on the drums.
-const DRUM_SH = { z: 127, a: 12.5, s0: 31.4, s1: 44.6, arm: 37, socket: 5 };
-const ARM_DIR = [0, Math.cos(-20 * DEG), Math.sin(-20 * DEG)];
-const ARM_PAD = 13.8;
+// Shoulder drums at the barrel's front corners (R6.50 in on the CAD), each carrying a
+// ball socket: MGM's "flexible sleeve & ball socket".
+const DRUM_SH = { z: 128, az: 52 * DEG, a: 15, s1: 38.4, face: 46.2, socket: 1.4, ball: 6 };
+const shoulderDir = (side) => [side * Math.sin(DRUM_SH.az), Math.cos(DRUM_SH.az), 0];
 const drums = {};
 for (const side of [-1, 1]) {
-  const F = G.frameOf([0, 0, DRUM_SH.z], [side, 0, 0], [0, 1, 0], [0, 0, 1]);
-  saddle("chest", F, DRUM_SH.a, 29.5, DRUM_SH.s0, chestSolid, { name: "chest.shoulder-pad" });
-  const profile = [[DRUM_SH.s0, DRUM_SH.a], [42, DRUM_SH.a], [43.2, 12, 1], [44, 11, 1], [DRUM_SH.s1, 9.6]];
+  const d = shoulderDir(side);
+  const F = G.frameOf([0, 0, DRUM_SH.z], d, G.unit3([d[1], -d[0], 0]), [0, 0, 1]);
+  const start = (t) => Math.sqrt(Math.max(0, S.CHEST.body.radius(DRUM_SH.z + DRUM_SH.a * Math.sin(t)) ** 2 - (DRUM_SH.a * Math.cos(t)) ** 2));
+  saddle("chest", F, DRUM_SH.a, start, DRUM_SH.s1, chestSolid, { name: "chest.shoulder-pad" });
   const facing = G.dot3(F.a, V) > 0.12;
-  drums[side] = turnedOn("chest", F, profile, { tone: "hi", name: "chest.shoulder", inner: Ln(G.arcOf(F, 34.6, DRUM_SH.a, P), { tone: "faint" }), extra: facing ? Dots(G.dotsOf(F, DRUM_SH.s1, 7.2, 8, P, { all: true }), { size: 0.42 }) : "" });
-  if (facing) discOn("chest", F, DRUM_SH.s1, DRUM_SH.s1 + 1.2, 4.2, { tone: "mid", name: "chest.shoulder-boss", extra: Ln(G.circleOf(F, DRUM_SH.s1 + 1.2, 2, P), { tone: "lo" }) });
-  // Arm socket pad on the drum's front.
-  const centre = [side * DRUM_SH.arm, 0, DRUM_SH.z];
-  const AF = G.frameAlong(centre, ARM_DIR);
-  saddle("chest", AF, DRUM_SH.socket, DRUM_SH.a, ARM_PAD, drums[side], { name: "chest.arm-socket" });
+  const profile = [[DRUM_SH.s1, DRUM_SH.a], [43, DRUM_SH.a], [44.6, 14.4, 1], [45.6, 13.2, 1], [DRUM_SH.face, 11.8]];
+  drums[side] = turnedOn("chest", F, profile, { tone: "hi", name: "chest.shoulder", inner: Ln(G.arcOf(F, 41, DRUM_SH.a, P), { tone: "faint" }), extra: facing ? Dots(G.dotsOf(F, DRUM_SH.face, 9.6, 10, P, { all: true }), { size: 0.42 }) : "" });
+  discOn("chest", F, DRUM_SH.face, DRUM_SH.face + DRUM_SH.socket, 7.6, { tone: "mid", name: "chest.socket", inner: facing ? Ln(G.circleOf(F, DRUM_SH.face + DRUM_SH.socket, 4.6, P), { tone: "lo" }) : "" });
 }
 
-// ---------------------------------------------------------------- arms (bellows forearm, three-finger claw)
+// ---------------------------------------------------------------- arms: ball, bellows sleeve, three-finger claw
+const ARM = { sleeve: 5.2, length: 14, wrist: 5.5 };
 for (const side of [1, -1]) {
   const piece = side > 0 ? "armR" : "armL";
-  const centre = [side * DRUM_SH.arm, 0, DRUM_SH.z];
-  const AF = G.frameOf(centre, ARM_DIR, [side, 0, 0], G.cross3(ARM_DIR, [side, 0, 0]));
-  discOn(piece, AF, ARM_PAD, ARM_PAD + 1.6, DRUM_SH.socket, { tone: "mid", name: `${piece}.collar` });
-  const bellows = [];
-  const n = 16;
-  for (let index = 0; index <= n; index++) bellows.push([ARM_PAD + 1.6 + (index * 8.8) / n, index % 2 ? 4 : 4.8]);
-  turnedOn(piece, AF, bellows, { tone: "hi", name: `${piece}.bellows`, smooth: false });
-  const wrist = ARM_PAD + 1.6 + 8.8;
-  discOn(piece, AF, wrist, wrist + 1.6, 4.5, { tone: "mid", name: `${piece}.wrist` });
-  const palm = [[wrist + 1.6, 4.2], [wrist + 3.2, 4.2], [wrist + 4.4, 3.4, 1], [wrist + 5, 2.4]];
+  const d = shoulderDir(side);
+  const centre = G.add3([0, 0, DRUM_SH.z], G.mul3(d, DRUM_SH.face + DRUM_SH.socket + DRUM_SH.ball));
+  const ball = ballAt(piece, centre, DRUM_SH.ball, { tone: "hi", name: `${piece}.ball` });
+  const dir = G.unit3([side * 0.36, 0.92, -0.18]);
+  const AF = G.frameOf(centre, dir, G.unit3(G.cross3([0, 0, 1], dir)), G.cross3(dir, G.unit3(G.cross3([0, 0, 1], dir))));
+  const s0 = Math.sqrt(DRUM_SH.ball ** 2 - ARM.sleeve ** 2);
+  const ribs = [];
+  for (let s = s0 + 0.9; s < s0 + ARM.length - 0.5; s += 0.85) ribs.push(G.arcOf(AF, s, ARM.sleeve, P));
+  discOn(piece, AF, s0 - 0.6, s0 + ARM.length, ARM.sleeve, { tone: "hi", name: `${piece}.sleeve`, inner: Ln(ribs.join(""), { tone: "lo" }), cut: [ball] });
+  const wrist = s0 + ARM.length;
+  discOn(piece, AF, wrist, wrist + 1.8, ARM.wrist, { tone: "mid", name: `${piece}.wrist` });
+  const palm = [[wrist + 1.8, 4.6], [wrist + 3.4, 4.6], [wrist + 4.8, 3.6, 1], [wrist + 5.6, 2.6]];
   turnedOn(piece, AF, palm, { tone: "hi", name: `${piece}.palm` });
-  const face = wrist + 5;
+  const face = wrist + 5.6;
   for (const angle of [90, 210, 330]) {
     const owner = `${piece}.digit${angle}`;
     const radial = G.radialOf(AF, angle * DEG);
-    const base = G.add3(G.pointOf(AF, face, 1.3, angle * DEG), G.mul3(AF.a, 1.15));
-    ballAt(piece, base, 1.15, { tone: "mid", name: `${piece}.knuckle`, owner });
-    const dir = G.unit3(G.add3(G.mul3(AF.a, Math.cos(16 * DEG)), G.mul3(radial, Math.sin(16 * DEG))));
-    const FF = G.frameAlong(base, dir);
-    const start = Math.sqrt(1.15 ** 2 - 0.95 ** 2);
-    turnedOn(piece, FF, [[start, 0.95], [start + 1.4, 0.95], [start + 5.2, 0.55], [start + 6, 0.32]], { tone: "hi", name: `${piece}.finger`, owner });
+    const base = G.add3(G.pointOf(AF, face, 1.4, angle * DEG), G.mul3(AF.a, 1.3));
+    ballAt(piece, base, 1.3, { tone: "mid", name: `${piece}.knuckle`, owner });
+    const fdir = G.unit3(G.add3(G.mul3(AF.a, Math.cos(14 * DEG)), G.mul3(radial, Math.sin(14 * DEG))));
+    const FF = G.frameAlong(base, fdir);
+    const start = Math.sqrt(1.3 ** 2 - 1.05 ** 2);
+    turnedOn(piece, FF, [[start, 1.05], [start + 1.6, 1.05], [start + 6, 0.6], [start + 6.9, 0.36]], { tone: "hi", name: `${piece}.finger`, owner });
   }
 }
 
-// ---------------------------------------------------------------- head: lip, flared brim with the voice grille
-const HEAD_X = (theta, z, radius, inset = 0) => [(radius(z) - inset) * Math.sin(theta), (radius(z) - inset) * Math.cos(theta), z];
+// ---------------------------------------------------------------- head: voice collar, slanted brim, key chassis
+// The collar and the shell meet on one sloping plane, high at the front and low at the
+// back, so the voice tubes show under the brim at the front only.
+const onCollar = (theta, z, r = S.COLLAR.r) => [r * Math.sin(theta), r * Math.cos(theta), z];
+const NEON = { a: 50 * DEG, column: 56 * DEG, step: 1.15 };
+const SLANT_F = G.frameOf(S.SLANT_O, S.SLANT_N, [1, 0, 0], G.cross3(S.SLANT_N, [1, 0, 0]));
+const brimTop = G.add3(S.SLANT_O, G.mul3(S.SLANT_N, S.BRIM.thick));
+const brimTopZ = (x, y) => brimTop[2] - ((x - brimTop[0]) * S.SLANT_N[0] + (y - brimTop[1]) * S.SLANT_N[1]) / S.SLANT_N[2];
 {
-  const F = Fz(0, 0);
-  discOn("head", F, S.LIP.z0, S.LIP.z1, S.LIP.r, { tone: "mid", name: "head.lip" });
-}
-const GRILLE = { a: 0.62, z0: 153.6, z1: 165, tubes: 9 };
-{
-  const r = S.FLARE.body.radius;
-  const outline = [];
-  for (let index = 0; index <= 16; index++) outline.push(HEAD_X(-GRILLE.a + (2 * GRILLE.a * index) / 16, GRILLE.z0, r));
-  for (let index = 0; index <= 10; index++) outline.push(HEAD_X(GRILLE.a, GRILLE.z0 + ((GRILLE.z1 - GRILLE.z0) * index) / 10, r));
-  for (let index = 0; index <= 16; index++) outline.push(HEAD_X(GRILLE.a - (2 * GRILLE.a * index) / 16, GRILLE.z1, r));
-  for (let index = 0; index <= 10; index++) outline.push(HEAD_X(-GRILLE.a, GRILLE.z1 - ((GRILLE.z1 - GRILLE.z0) * index) / 10, r));
-  const opening = path(outline, true);
+  const n = 144;
+  const ring = Array.from({ length: n }, (_, j) => (j / n) * Math.PI * 2);
+  const low = ring.map((t) => onCollar(t, S.COLLAR.z0));
+  const high = ring.map((t) => onCollar(t, S.slantZ(S.COLLAR.r * Math.cos(t))));
+  const faces = ring.map((_, j) => [low[j], low[(j + 1) % n], high[(j + 1) % n], high[j]]);
+  faces.push(high, [...low].reverse());
+  const paths = convexPaths(faces, P);
+  // Voice tubes: horizontal neon arcs across the front, each running until it meets the
+  // slanted top edge or the plated columns at either side.
   const tubes = [];
-  for (let index = 0; index < GRILLE.tubes; index++) {
-    const z = GRILLE.z0 + 1.1 + (index * (GRILLE.z1 - GRILLE.z0 - 2.2)) / (GRILLE.tubes - 1);
+  let index = 0;
+  for (let z = S.COLLAR.z0 + 0.9; z < S.slantZ(S.COLLAR.r) - 0.25; z += NEON.step) {
+    const c = ((z - S.SLANT.back) / ((S.SLANT.front - S.SLANT.back) / (2 * S.SLANT.span)) - S.SLANT.span) / S.COLLAR.r;
+    const limit = Math.min(NEON.a, Math.acos(Math.max(-1, Math.min(1, c))));
+    if (limit < 0.05) continue;
     const points = [];
-    for (let j = 0; j <= 20; j++) points.push(HEAD_X(-GRILLE.a + 0.07 + ((2 * GRILLE.a - 0.14) * j) / 20, z, r, 1.6));
-    tubes.push(`<path class="rb-neon" data-tube="${index}" d="${path(points)}"/>`);
+    for (let j = 0; j <= 30; j++) points.push(onCollar(-limit + (2 * limit * j) / 30, z, S.COLLAR.r + 0.05));
+    tubes.push(`<path class="rb-neon" data-tube="${index++}" d="${path(points)}"/>`);
   }
   const columns = [];
   for (const sign of [-1, 1]) {
-    for (let z = GRILLE.z0 + 0.6; z < GRILLE.z1 - 0.3; z += 0.9) {
+    for (const t of [NEON.a, NEON.column]) {
+      const top = S.slantZ(S.COLLAR.r * Math.cos(t));
+      columns.push(path([onCollar(sign * t, S.COLLAR.z0, S.COLLAR.r + 0.05), onCollar(sign * t, top, S.COLLAR.r + 0.05)]));
+    }
+    const top = S.slantZ(S.COLLAR.r * Math.cos(NEON.column));
+    for (let z = S.COLLAR.z0 + 0.7; z < top - 0.2; z += 0.9) {
       const points = [];
-      for (let j = 0; j <= 4; j++) points.push(HEAD_X(sign * (GRILLE.a - 0.07 + (0.07 * j) / 4), z, r, 0));
+      for (let j = 0; j <= 4; j++) points.push(onCollar(sign * (NEON.a + ((NEON.column - NEON.a) * j) / 4), z, S.COLLAR.r + 0.05));
       columns.push(path(points));
     }
   }
-  for (const sign of [-1, 1]) columns.push(path([HEAD_X(sign * (GRILLE.a - 0.07), GRILLE.z0, r, 0), HEAD_X(sign * (GRILLE.a - 0.07), GRILLE.z1, r, 0)]));
-  const divider = path([HEAD_X(0, GRILLE.z0, r, 0), HEAD_X(0, GRILLE.z1, r, 0)]);
-  const grille = `<clipPath id="rb-grille"><path d="${opening}"/></clipPath><path class="rb-cavity" d="${opening}"/><g clip-path="url(#rb-grille)"><g data-live="neon">${tubes.join("")}</g>${Ln(columns.join(""), { tone: "mid" })}${Ln(divider, { tone: "lo" })}</g>${Ln(opening, { tone: "lo" })}`;
-  bodyZ("head", 0, 0, S.FLARE.body, S.FLARE.z0, S.FLARE.z1, { seams: [], name: "head.brim", extra: grille, count: 20 });
+  const id = "head.collar";
+  const shape = record(A.cylinder(0, 0, S.COLLAR.r, S.COLLAR.z0, S.slantZ(S.COLLAR.r) + 0.5 - S.COLLAR.z0, { name: id, cut: [beyond(S.SLANT_O, G.mul3(S.SLANT_N, -1))] }));
+  put("head", [0, 0, 158], Sv(paths, { tone: "hi" }) + `<g data-live="neon">${tubes.join("")}</g>` + Ln(columns.join(""), { tone: "mid" }), { name: id, shapes: [shape] });
 }
-// Helmet: a cone with the relay window row, lamps and vents on its front.
-const KEYROW = { thetas: [-0.3, -0.18, -0.06, 0.06, 0.18, 0.3], z: 177, halfA: 0.038, halfZ: 2.5, lamps: 0.4 };
-const helmet = (() => {
-  const F = Fz(0, 0);
-  const hr = S.helmetRadius;
-  const body = S.HELMET_BODY;
-  const profile = S.sampled(body, S.HELMET.z0, S.HELMET.z1, 30);
-  const on = (theta, z, inset = 0) => HEAD_X(theta, z, hr, inset);
-  const frame = roundRect(-0.4, 173.4, 0.4, 180.6, 0.06, 3);
-  const framePath = path(frame.map(([t, z]) => on(t, z)), true);
-  const windows = KEYROW.thetas.map((theta, index) => {
-    const ring = [];
-    for (let j = 0; j < 24; j++) {
-      const a = (j / 24) * Math.PI * 2;
-      ring.push(on(theta + KEYROW.halfA * Math.cos(a), KEYROW.z + KEYROW.halfZ * Math.sin(a)));
-    }
-    const d = path(ring, true);
-    const key = [];
-    const kw = KEYROW.halfA * 0.62;
-    for (const [t, z] of roundRect(-kw, -1.5, kw, 1.5, 0.012, 2)) key.push(on(theta + t, KEYROW.z + z, 0.3));
-    return `<clipPath id="rb-win${index}"><path d="${d}"/></clipPath><path class="rb-cavity" d="${d}"/><g clip-path="url(#rb-win${index})"><g data-rocker="${index}"><path class="rb-key" d="${path(key, true)}"/>${Ln(path([on(theta - kw, KEYROW.z + 0.6, 0.3), on(theta + kw, KEYROW.z + 0.6, 0.3)]), { tone: "lo" })}</g></g>${Ln(d, { tone: "lo" })}`;
-  });
-  const holes = [];
-  const holeDots = [];
-  for (let index = 0; index < 7; index++) {
-    const theta = -0.33 + index * 0.11;
-    const ring = [];
-    for (let j = 0; j < 16; j++) ring.push(on(theta + 0.02 * Math.cos((j / 16) * Math.PI * 2), 182.2 + 0.4 * Math.sin((j / 16) * Math.PI * 2)));
-    holes.push(path(ring, true));
-    holeDots.push(at(on(theta, 182.2)));
-  }
-  const vents = [];
-  for (const sign of [-1, 1]) {
-    for (let j = 0; j < 4; j++) {
-      const t = sign * (0.2 + j * 0.05);
-      vents.push(path(roundRect(t - 0.012, 183.4, t + 0.012, 186.4, 0.01, 2).map(([a, z]) => on(a, z)), true));
-    }
-  }
-  const lampOf = (theta, which) => {
-    const ring = [];
-    for (let j = 0; j < 20; j++) ring.push(on(theta + 0.05 * Math.cos((j / 20) * Math.PI * 2), KEYROW.z + 0.95 * Math.sin((j / 20) * Math.PI * 2), -0.2));
-    return `<path class="rb-lamp" data-live="${which}" d="${path(ring, true)}"/>`;
-  };
-  const extra =
-    Ln(framePath, { tone: "lo" }) +
-    windows.join("") +
-    lampOf(-KEYROW.lamps - 0.03, "lampL") +
-    lampOf(KEYROW.lamps + 0.03, "lampR") +
-    Ln(holes.join(""), { tone: "lo" }) +
-    Dots(holeDots, { size: 0.35, tone: "mid" }) +
-    Ln(vents.join(""), { tone: "lo" });
-  const id = "head.helmet";
-  const shape = record(A.solid(F, profile, { name: id, radius: body.radius }));
-  put("head", [0, 0, 178], Sv(G.solidOf(profile, F, P, { smooth: { slope: body.slope, radius: body.radius } }), { tone: "hi", inner: Ln(G.arcOf(F, 170.2, hr(170.2), P, { slope: S.HELMET_SLOPE }), { tone: "faint" }) }) + extra, { name: id, shapes: [shape] });
-  return shape;
-})();
-// Ears: two scanners, one on a horizontal shaft and one on a vertical post.
-const EAR = { z: 181, ring: 4.6, tube: 0.55 };
-const EARS = {};
 {
-  const hr = S.helmetRadius(EAR.z);
-  // Left ear (screen left, -x): horizontal shaft.
-  const FL = G.frameOf([0, 0, EAR.z], [-1, 0, 0], [0, 1, 0], [0, 0, 1]);
-  discOn("head", FL, hr - 0.3, hr + 1.6, 1.7, { tone: "mid", name: "head.earL-collar", cut: [helmet] });
-  discOn("head", FL, hr + 1.6, 26, 0.85, { tone: "hi", name: "head.earL-shaft" });
-  ballAt("head", [-27.4, 0, EAR.z], 1.45, { tone: "mid", name: "head.earL-hub" });
-  EARS.L = { centre: [-(27.4 + 1.45 + EAR.tube + EAR.ring), 0, EAR.z], axis: [1, 0, 0], ring: EAR.ring, tube: EAR.tube };
-  // Right ear: shaft out, elbow, then a vertical post.
-  const FR = G.frameOf([0, 0, EAR.z], [1, 0, 0], [0, 1, 0], [0, 0, 1]);
-  discOn("head", FR, hr - 0.3, hr + 1.6, 1.7, { tone: "mid", name: "head.earR-collar", cut: [helmet] });
-  discOn("head", FR, hr + 1.6, 23.6, 0.85, { tone: "hi", name: "head.earR-shaft" });
-  ballAt("head", [24.9, 0, EAR.z], 1.3, { tone: "mid", name: "head.earR-elbow" });
-  const FP = G.frameOf([24.9, 0, 0], [0, 0, 1], [1, 0, 0], [0, 1, 0]);
-  discOn("head", FP, EAR.z + Math.sqrt(1.3 ** 2 - 0.75 ** 2), 188.6, 0.75, { tone: "hi", name: "head.earR-post" });
-  ballAt("head", [24.9, 0, 188.6 + 1.3], 1.4, { tone: "mid", name: "head.earR-hub" });
-  EARS.R = { centre: [24.9, 0, 188.6 + 1.3 + 1.4 + EAR.tube + EAR.ring], axis: [0, 0, 1], ring: EAR.ring, tube: EAR.tube };
+  const id = "head.brim";
+  const shape = record(A.ring(SLANT_F, 0, S.BRIM.thick, S.BRIM.rIn, S.BRIM.rOut, { name: id }));
+  put("head", G.add3(S.SLANT_O, G.mul3(S.SLANT_N, 0.7)), Sv(G.ringBand(0, S.BRIM.thick, S.BRIM.rIn, S.BRIM.rOut, SLANT_F, P, { bevel: 0.4 }), { tone: "mid" }) + Dots(G.dotsOf(SLANT_F, S.BRIM.thick, 24.6, 36, P, { all: true }), { size: 0.4 }), { name: id, shapes: [shape] });
+}
+// The hood and the key chassis: one D-shaped column, flat across the front behind the
+// window. Below HOOD.top its round back is the hood, flush with the head's outline; above,
+// it stands back from the clear cap and carries the gyro deck. A cheek fills each side of
+// the window, between the window's edge and the flat front, and carries an ear.
+const CH = S.CHASSIS;
+const HOOD = S.HOOD;
+const KEYROW = { xs: [-8.75, -5.25, -1.75, 1.75, 5.25, 8.75], y: CH.front + 0.8, top: 184.8, bottom: 182, stem: 179.6, coils: [176.8, 177.65, 178.5, 179.35], lamps: 10.7, lampZ: 180.6, ind: 187.2 };
+const hoodR = (z) => S.shellRadius(z) - 0.05;
+const capR = (z) => S.shellRadius(z) - 0.8;
+const HOOD_LOW = brimTopZ(0, -S.SHELL.R) - 0.2;
+const HOOD_FLAT = brimTopZ(0, S.SHELL.R) + 0.2;
+const windowX = CH.front * Math.tan(HOOD.window);
+// Side quads between matching rings, and the two end caps.
+function loft(rings) {
+  const faces = [];
+  for (let i = 0; i + 1 < rings.length; i++) {
+    const lo = rings[i];
+    const hi = rings[i + 1];
+    for (let j = 0; j < lo.length; j++) faces.push([lo[j], lo[(j + 1) % lo.length], hi[(j + 1) % lo.length], hi[j]]);
+  }
+  faces.push(rings[rings.length - 1], [...rings[0]].reverse());
+  return faces;
+}
+const levelsOf = (z0, z1, step = 1.5) => {
+  const out = [];
+  for (let z = z0; z < z1 - 0.3; z += step) out.push(z);
+  out.push(z1);
+  return out;
+};
+// A D of radius r cut flat at y = CH.front: front right corner, front left corner, then
+// round the back.
+function dPlan(r) {
+  const half = Math.sqrt(Math.max(0, r * r - CH.front * CH.front));
+  const a0 = Math.atan2(CH.front, -half);
+  const a1 = Math.atan2(CH.front, half) + Math.PI * 2;
+  const out = [[half, CH.front], [-half, CH.front]];
+  for (let j = 1; j < 48; j++) {
+    const a = a0 + ((a1 - a0) * j) / 48;
+    out.push([r * Math.cos(a), r * Math.sin(a)]);
+  }
+  return out;
+}
+// A cheek in plan: the window's edge, the arc of the outline, the flat front.
+function cheekPlan(side, r) {
+  const aEnd = Math.acos(Math.min(1, CH.front / r));
+  const out = [[side * windowX, CH.front]];
+  for (let j = 0; j <= 8; j++) {
+    const a = HOOD.window + ((aEnd - HOOD.window) * j) / 8;
+    out.push([side * r * Math.sin(a), r * Math.cos(a)]);
+  }
+  return side > 0 ? out.reverse() : out;
+}
+const onBrim = (plan) => plan.map(([x, y]) => [x, y, brimTopZ(x, y)]);
+const atLevel = (plan, z) => plan.map(([x, y]) => [x, y, z]);
+const turned = (radius, z0, z1) => levelsOf(z0, z1).map((z) => [z, radius(z)]);
+const brimCut = () => beyond(brimTop, S.SLANT_N);
+const frontCut = () => beyond([0, CH.front, 0], [0, -1, 0]);
+let hood;
+{
+  const rings = [onBrim(dPlan(hoodR(HOOD_FLAT))), ...levelsOf(HOOD_FLAT, HOOD.top).map((z) => atLevel(dPlan(hoodR(z)), z))];
+  // The recess behind the window: the flat front between the cheeks, drawn dark.
+  const recess = [];
+  for (const z of levelsOf(brimTopZ(windowX, CH.front), HOOD.top, 2)) recess.push(at([windowX, CH.front, Math.max(z, brimTopZ(windowX, CH.front))]));
+  for (const z of levelsOf(brimTopZ(-windowX, CH.front), HOOD.top, 2).reverse()) recess.push(at([-windowX, CH.front, Math.max(z, brimTopZ(-windowX, CH.front))]));
+  const id = "head.hood";
+  hood = record(A.solid(Fz(0, 0), [[HOOD_LOW, hoodR(HOOD_LOW)], ...turned(hoodR, HOOD_LOW + 1.5, HOOD.top)], { name: id, cut: [brimCut(), frontCut()] }));
+  put("head", [0, 0, 180], Sv(convexPaths(loft(rings), P), { tone: "hi" }) + `<path class="rb-recess" d="${k.pathOf(recess, true)}"/>`, { name: id, shapes: [hood] });
+}
+for (const side of [-1, 1]) {
+  const tag = side > 0 ? "R" : "L";
+  const rings = [onBrim(cheekPlan(side, hoodR(HOOD_FLAT))), ...levelsOf(HOOD_FLAT, HOOD.top).map((z) => atLevel(cheekPlan(side, hoodR(z)), z))];
+  const n = [side * Math.cos(HOOD.window), -Math.sin(HOOD.window), 0];
+  const id = `head.cheek${tag}`;
+  const shape = record(A.solid(Fz(0, 0), [[HOOD_LOW, hoodR(HOOD_LOW)], ...turned(hoodR, HOOD_LOW + 1.5, HOOD.top)], { name: id, cut: [brimCut(), beyond([0, CH.front, 0], [0, 1, 0]), beyond(G.mul3(n, 0.05), n)] }));
+  put("head", [side * 15.5, CH.front + 1.5, 180], Sv(convexPaths(loft(rings), P), { tone: "hi" }), { name: id, shapes: [shape] });
+}
+// Comb fins: thin plates standing out from each side of the hood, from the brim to the ears.
+const COMB = { z0: 168.8, pitch: 1.9, count: 8, out: 3.6, half: 0.9, thick: 0.4 };
+for (const side of [-1, 1]) {
+  for (let index = 0; index < COMB.count; index++) {
+    const z = COMB.z0 + index * COMB.pitch;
+    const r = hoodR(z + COMB.thick);
+    const plan = side > 0 ? { x: r - 0.4, y: -COMB.half, w: COMB.out + 0.4, d: 2 * COMB.half, r: 0.25 } : { x: -r - COMB.out, y: -COMB.half, w: COMB.out + 0.4, d: 2 * COMB.half, r: 0.25 };
+    const id = nameFor("head.comb-fin");
+    const shape = record(A.slab(plan, z, COMB.thick, { name: id, cut: [hood], seated: true }, 2));
+    put("head", [side * (r + COMB.out / 2), 0, z + COMB.thick / 2], Sv(k.slabOf(plan, z, COMB.thick, P, 2, 0.1), { tone: "hi" }), { name: id, shapes: [shape] });
+  }
+}
+{
+  const f = (x, z, y = CH.front) => at([x, y, z]);
+  const frame = roundRect(-11.6, 175.8, 11.6, 185.8, 0.8).map(([x, z]) => f(x, z));
+  const vents = [];
+  for (const sign of [-1, 1]) for (let j = 0; j < 4; j++) {
+    const x = sign * (7.4 + j * 1.3);
+    vents.push(k.pathOf(roundRect(x - 0.32, 188.6, x + 0.32, 191.8, 0.3, 2).map(([xx, z]) => f(xx, z)), true));
+  }
+  const coils = [];
+  const keys = KEYROW.xs.map((x, index) => {
+    for (const z of KEYROW.coils) {
+      const ringPts = [];
+      for (let j = 0; j <= 20; j++) {
+        const a = (j / 20) * Math.PI * 2;
+        ringPts.push([x + 0.85 * Math.cos(a), KEYROW.y + 0.85 * Math.sin(a), z]);
+      }
+      coils.push(path(ringPts, true));
+    }
+    const tab = roundRect(x - 1.05, KEYROW.bottom, x + 1.05, KEYROW.top, 0.3, 2).map(([xx, z]) => at([xx, KEYROW.y, z]));
+    const stem = path([[x, KEYROW.y, KEYROW.bottom], [x, KEYROW.y + 0.85, KEYROW.coils[3]]]);
+    return `<g data-rocker="${index}"><path class="iso-line" data-tone="mid" d="${stem}"/><path class="rb-key" d="${k.pathOf(tab, true)}"/></g>`;
+  });
+  const lampOf = (x, which) => {
+    const pts = [];
+    for (let j = 0; j < 20; j++) pts.push(f(x + 0.95 * Math.cos((j / 20) * Math.PI * 2), KEYROW.lampZ + 0.95 * Math.sin((j / 20) * Math.PI * 2)));
+    return `<path class="rb-lamp" data-live="${which}" d="${k.pathOf(pts, true)}"/>`;
+  };
+  const indicators = KEYROW.xs.map((x, index) => {
+    const pts = [];
+    for (let j = 0; j < 16; j++) pts.push(f(x + 0.55 * Math.cos((j / 16) * Math.PI * 2), KEYROW.ind + 0.55 * Math.sin((j / 16) * Math.PI * 2)));
+    return `<path class="rb-ind" data-ind="${index}" d="${k.pathOf(pts, true)}"/>`;
+  });
+  const extra = Ln(k.pathOf(frame, true), { tone: "lo" }) + Ln(vents.join(""), { tone: "lo" }) + Ln(coils.join(""), { tone: "mid" }) + keys.join("") + lampOf(-KEYROW.lamps, "lampL") + lampOf(KEYROW.lamps, "lampR") + indicators.join("");
+  const rings = levelsOf(HOOD.top, CH.top, 1).map((z) => atLevel(dPlan(capR(z)), z));
+  const id = "head.chassis";
+  const shape = record(A.solid(Fz(0, 0), turned(capR, HOOD.top, CH.top), { name: id, cut: [frontCut()] }));
+  put("head", [0, 2, 196], `<g class="rb-inner">${Sv(convexPaths(loft(rings), P), { tone: "mid" })}</g>`, { name: id, shapes: [shape] });
+  // The front details sit on the hood's flat front, seen through the window.
+  const face = film("head.keyface", [0, CH.front + 1, 183], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [windowX, 1, 11]);
+  put("head", [0, CH.front + 0.6, 183], `<g class="rb-inner">${extra}</g>`, { name: "head.keyface", shapes: [face], bias: 0.4 });
+}
+
+// ---------------------------------------------------------------- gyro tower on the chassis deck (rides the head)
+const TOWER = { z: CH.top, orbit: 5.5, gyroZ: 205.4, gyroR: 2.4, lampZ: 208.2, apex: [0, 8.1, CH.top + 6.8] };
+{
+  const F = Fz(0, 0);
+  discOn("brain", F, TOWER.z, TOWER.z + 1, 4.6, { tone: "mid", name: "brain.flange" });
+  bodyZ("brain", 0, 0, S.bellAt(TOWER.z + 1), TOWER.z + 1, TOWER.z + 5.6, { name: "brain.bell", count: 16 });
+  discOn("brain", F, TOWER.z + 5.6, TOWER.gyroZ - 0.7, 0.55, { tone: "mid", name: "brain.shaft" });
+  discOn("brain", F, TOWER.gyroZ - 0.7, TOWER.gyroZ + 0.7, 1.3, { tone: "mid", name: "brain.carrier" });
+  discOn("brain", F, TOWER.gyroZ + 0.7, TOWER.lampZ, 0.55, { tone: "mid", name: "brain.shaft" });
+  const shapes = [0, 1, 2].flatMap((index) => {
+    const a = (index * 2 * Math.PI) / 3;
+    const dir = [Math.cos(a), Math.sin(a), 0];
+    const spoke = G.frameAlong([0, 0, TOWER.gyroZ], dir);
+    return [
+      record(A.ball([TOWER.orbit * dir[0], TOWER.orbit * dir[1], TOWER.gyroZ], TOWER.gyroR, { name: `brain.gyro#${index}` })),
+      record(A.disc(spoke, 1.2, TOWER.orbit - TOWER.gyroR + 0.1, 0.12, { name: `brain.gyro#${index}` })),
+    ];
+  });
+  put("brain", [0, 0, TOWER.gyroZ], `<g data-live="gyro"></g>`, { name: "brain.gyros", shapes, bias: 0.3 });
+  turnedOn("brain", F, [[TOWER.lampZ, 1.6], [TOWER.lampZ + 0.8, 1.6], [TOWER.lampZ + 1.2, 1.2]], { tone: "mid", name: "brain.lamp-holder" });
+  const bulb = [0, 0, TOWER.lampZ + 1.2 + 1.3];
+  const lampShape = record(A.ball(bulb, 1.3, { name: "brain.lamp" }));
+  put("brain", bulb, `<g data-live="pilot" class="rb-pilot">${Sv(G.sphereOf(bulb, 1.3, P), { tone: "hi" })}</g>`, { name: "brain.lamp", shapes: [lampShape], bias: 0.2 });
+  const apex = TOWER.apex;
+  slab("brain", { x: -0.5, y: apex[1] + 0.35, w: 1, d: 0.8, r: 0.2 }, TOWER.z, apex[2] + 0.6 - TOWER.z, { tone: "mid", steps: 2, bevel: 0, name: "brain.varm-post" });
+  const vShapes = [-1, 1].map((side) => {
+    const lean = 22 * DEG;
+    const down = [side * Math.sin(lean), 0, -Math.cos(lean)];
+    const across = [Math.cos(lean), 0, side * Math.sin(lean)];
+    return record(A.orientedBox(G.add3(apex, G.add3(G.mul3(down, 3.1), [0, 0.15, 0])), [down, across, [0, 1, 0]], [3.1, 0.9, 0.15], { name: "brain.varms" }));
+  });
+  put("brain", G.add3(apex, [0, 3, -3]), `<g data-live="varms"></g>`, { name: "brain.varms", bias: 0.5, shapes: vShapes });
+}
+
+// ---------------------------------------------------------------- the clear shell, the ears and the radar mast
+// The clear plastic covers the whole cap above the hood, and below it runs down the front
+// to the brim as a window between the cheeks: the "odd shape" of Robby's dome.
+const SH = S.SHELL;
+let shellShape;
+{
+  const F = Fz(0, 0);
+  const profile = S.sampled({ radius: S.shellRadius }, SH.base, SH.top, 36);
+  const paths = G.solidOf(profile, F, P, { smooth: { slope: S.shellSlope, radius: S.shellRadius } });
+  const onShell = (az, z) => {
+    const r = S.shellRadius(z);
+    return [r * Math.sin(az), r * Math.cos(az), z];
+  };
+  // Where the outline meets the top of the brim, at an angle from the front.
+  const footOf = (az) => {
+    let lo = SH.base;
+    let hi = SH.base + 12;
+    for (let index = 0; index < 30; index++) {
+      const mid = (lo + hi) / 2;
+      const p = onShell(az, mid);
+      if (mid < brimTopZ(p[0], p[1])) lo = mid;
+      else hi = mid;
+    }
+    return hi;
+  };
+  const cap = [at([0, 0, SH.top])];
+  for (let i = 0; i <= 24; i++) {
+    const z = HOOD.top + ((SH.top - HOOD.top) * i) / 24;
+    for (let j = 0; j < 96; j++) cap.push(at(onShell((j / 96) * Math.PI * 2, z)));
+  }
+  const pane = [];
+  for (let j = 0; j <= 32; j++) {
+    const az = -HOOD.window + (2 * HOOD.window * j) / 32;
+    const foot = footOf(az);
+    for (let i = 0; i <= 16; i++) pane.push(at(onShell(az, foot + ((HOOD.top - foot) * i) / 16)));
+  }
+  const clip = k.pathOf(G.hullOf(cap), true) + k.pathOf(G.hullOf(pane), true);
+  const shine = [];
+  for (let j = 0; j <= 18; j++) {
+    const z = 174 + (j * 30) / 18;
+    const r = S.shellRadius(z) - 0.05;
+    shine.push(at([r * Math.sin(-0.62), r * Math.cos(-0.62), z]));
+  }
+  // Below the hood's top, everything outside the window belongs to the hood.
+  const besideWindow = (side) => {
+    const n = [side * Math.cos(HOOD.window), -Math.sin(HOOD.window), 0];
+    return A.orientedBox(G.add3(G.mul3(n, 400), [0, 0, HOOD.top - 400]), [n, [0, 0, 1], G.cross3(n, [0, 0, 1])], [400, 400, 400], { name: "cut" });
+  };
+  const outer = profile.map(([z, r]) => [z, r]).concat([[SH.top, 0]]);
+  const inner = [[SH.top - SH.wall, 0], ...[...profile].reverse().map(([z, r]) => [Math.min(z, SH.top - SH.wall), Math.max(0.1, r - SH.wall)])];
+  shellShape = record(A.body(F, [...outer, ...inner], { name: "dome.shell", cut: [brimCut(), besideWindow(-1), besideWindow(1)] }));
+  put("dome", [0, 0, 196], `<clipPath id="rb-shell"><path d="${clip}"/></clipPath><g class="rb-glass" clip-path="url(#rb-shell)">${Sv(paths, { tone: "hi" })}</g>` + k.fadeLineSvg(shine, { fade: [10, 10], tone: "mid", className: "rb-shine" }), { name: "dome.shell", shapes: [shellShape], bias: 2 });
+}
+// Ears: a cone hub out of each side of the hood with a blue eye lamp on its front and two
+// whisker spikes, and a rotating ring: on a short horizontal shaft on the left, on a post
+// tilted 30° on the right (CAD). The left whiskers stand up in a V, the right point outward.
+const EAR = { z: 187, ring: 4.6, tube: 0.55 };
+const EARS = {};
+for (const side of [-1, 1]) {
+  const tag = side > 0 ? "R" : "L";
+  const F = G.frameOf([0, 0, EAR.z], [side, 0, 0], [0, 1, 0], [0, 0, 1]);
+  const owner = `head.ear${tag}`;
+  discOn("head", F, hoodR(EAR.z) - 0.6, 24, 2.4, { tone: "mid", name: `head.ear${tag}-stub`, cut: [hood] });
+  const hub = turnedOn("head", F, [[24, 2.6], [26.2, 2.3], [28.6, 1.4]], { tone: "hi", name: `head.ear${tag}-hub`, smooth: false, owner });
+  const lensAt = [side * 25.2, 0, EAR.z];
+  const FL = G.frameOf(lensAt, [0, 1, 0], [1, 0, 0], [0, 0, 1]);
+  const lens = record(A.disc(FL, 2.1, 2.7, 0.85, { name: `head.eye${tag}`, cut: [hub], seated: true }));
+  put("head", G.add3(lensAt, [0, 2.6, 0]), Sv(G.disc(2.1, 2.7, 0.85, FL, P), { tone: "mid" }) + `<path class="rb-eye" data-live="eye${tag}" d="${G.circleOf(FL, 2.7, 0.6, P)}"/>`, { name: `head.eye${tag}`, shapes: [lens], bias: 0.3 });
+  const whiskers = side < 0 ? [8, 34].map((a) => [[-25, 0, EAR.z], [-Math.sin(a * DEG), 0, Math.cos(a * DEG)]]) : [-30, 30].map((a) => [[26.6, 0, EAR.z], [Math.cos(a * DEG), Math.sin(a * DEG), 0]]);
+  for (const [root, dir] of whiskers) {
+    const FS = G.frameAlong(root, G.unit3(dir));
+    const profile = [[2.2, 0.4], [7.8, 0.12]];
+    const id = nameFor(`head.ear${tag}-spike`);
+    const shape = record(A.solid(FS, profile, { name: id, owner, cut: [hub], seated: true }));
+    put("head", G.add3(FS.o, G.mul3(FS.a, 5)), Sv(G.solidOf(profile, FS, P, { smooth: false }), { tone: "hi" }), { name: id, shapes: [shape] });
+  }
+  if (side < 0) {
+    discOn("head", F, 28.6, 30.6, 0.75, { tone: "hi", name: "head.earL-shaft" });
+    ballAt("head", [-31.75, 0, EAR.z], 1.3, { tone: "mid", name: "head.earL-ball", owner: "head.earL-tip" });
+    EARS.L = { centre: [-(31.75 + 1.3 + EAR.tube + EAR.ring), 0, EAR.z], axis: [1, 0, 0], ring: EAR.ring, tube: EAR.tube };
+  } else {
+    const elbow = [28.6 + 1.3, 0, EAR.z];
+    ballAt("head", elbow, 1.3, { tone: "mid", name: "head.earR-elbow", owner: "head.earR-post" });
+    const dir = [Math.sin(30 * DEG), 0, Math.cos(30 * DEG)];
+    const FP = G.frameAlong(elbow, dir);
+    const s0 = Math.sqrt(1.3 ** 2 - 0.7 ** 2);
+    discOn("head", FP, s0, s0 + 8, 0.7, { tone: "hi", name: "head.earR-post", owner: "head.earR-post" });
+    const topBall = G.add3(elbow, G.mul3(dir, s0 + 8 + Math.sqrt(1.4 ** 2 - 0.7 ** 2)));
+    ballAt("head", topBall, 1.4, { tone: "mid", name: "head.earR-hub", owner: "head.earR-post" });
+    EARS.R = { centre: G.add3(topBall, G.mul3(dir, 1.4 + EAR.tube + EAR.ring)), axis: dir, ring: EAR.ring, tube: EAR.tube };
+  }
 }
 function earRing(ear, angle) {
-  // The ring's plane contains its spin axis; angle turns it about that axis.
   const a = ear.axis;
-  const base = Math.abs(a[2]) > 0.9 ? [0, 1, 0] : [0, 1, 0];
+  const base = [0, 1, 0];
   const side = G.unit3(G.cross3(a, base));
   const n = G.add3(G.mul3(base, Math.cos(angle)), G.mul3(side, Math.sin(angle)));
   const inPlane = G.unit3(G.cross3(n, a));
@@ -574,96 +798,12 @@ for (const which of ["L", "R"]) {
   const svg = tubePieces([...points, points[0]], ear.tube, P, { closed: true, maxLength: 400, spacing: 0.5 }).map((part) => tubeSvg(part, { tone: "hi" })).join("");
   put("head", ear.centre, `<g data-live="ear${which}">${svg}</g>`, { name: `head.ear${which}-ring`, shapes, bias: 0.4 });
 }
-// Eyes: forward lamps on cones, normal to the helmet's sloping side.
-for (const side of [-1, 1]) {
-  const theta = side * 55 * DEG;
-  const z = 176;
-  const hr = S.helmetRadius(z);
-  const radial = [Math.sin(theta), Math.cos(theta), 0];
-  const normal = G.unit3([radial[0], radial[1], -S.HELMET_SLOPE]);
-  const base = [hr * radial[0], hr * radial[1], z];
-  const F = G.frameAlong(base, normal);
-  turnedOn("head", F, [[-0.15, 2.3], [0.6, 2.3], [3.2, 1.15], [3.6, 1.15]], { tone: "mid", name: `head.eye${side > 0 ? "R" : "L"}` });
-  const lens = G.circleOf(F, 3.6, 1.0, P);
-  put("head", G.add3(base, G.mul3(normal, 3.7)), `<path class="rb-eye" data-live="eye${side > 0 ? "R" : "L"}" d="${lens}"/>`, { name: `head.eye${side > 0 ? "R" : "L"}-lens`, bias: 0.2, shapes: [record(A.disc(F, 3.6, 3.66, 1, { name: `head.eye${side > 0 ? "R" : "L"}-lens` }))] });
-}
-// Fin stacks below the ears: seven thin plates on a rod.
-for (const side of [-1, 1]) {
-  const theta = side * 80 * DEG;
-  const rod = [(S.helmetRadius(174) + 2.4) * Math.sin(theta), (S.helmetRadius(174) + 2.4) * Math.cos(theta)];
-  const F = Fz(rod[0], rod[1]);
-  let below = 168.4;
-  for (let index = 0; index < 7; index++) {
-    const z = 169.4 + index * 1.45;
-    discOn("head", F, below, z, 0.5, { tone: "mid", name: "head.fin-rod" });
-    discOn("head", F, z, z + 0.45, 1.75, { tone: "hi", name: "head.fin" });
-    below = z + 0.45;
-  }
-  discOn("head", F, below, 179.6, 0.5, { tone: "mid", name: "head.fin-rod" });
-  for (const z of [168.4, 179.2]) {
-    const radial = [Math.sin(theta), Math.cos(theta), 0];
-    const FS = G.frameOf([0, 0, z + 0.2], radial, [0, 0, 1], G.cross3(radial, [0, 0, 1]));
-    discOn("head", FS, S.helmetRadius(z + 0.2) - 0.2, S.helmetRadius(174) + 2.4 - 0.5, 0.42, { tone: "mid", name: "head.fin-standoff", cut: [helmet] });
-  }
-}
-
-// ---------------------------------------------------------------- gyro tower (rides the head)
-const TOWER = { z: S.HELMET.z1, orbit: 6, gyroZ: 202, gyroR: 2.7, lampZ: 205.4 };
-{
-  const F = Fz(0, 0);
-  discOn("brain", F, TOWER.z, TOWER.z + 1, 4.6, { tone: "mid", name: "brain.flange" });
-  bodyZ("brain", 0, 0, S.BELL, TOWER.z + 1, TOWER.z + 7, { name: "brain.bell", count: 16 });
-  discOn("brain", F, TOWER.z + 7, TOWER.gyroZ - 0.7, 0.55, { tone: "mid", name: "brain.shaft" });
-  discOn("brain", F, TOWER.gyroZ - 0.7, TOWER.gyroZ + 0.7, 1.3, { tone: "mid", name: "brain.carrier" });
-  discOn("brain", F, TOWER.gyroZ + 0.7, TOWER.lampZ, 0.55, { tone: "mid", name: "brain.shaft" });
-  const shapes = [0, 1, 2].flatMap((index) => {
-    const a = (index * 2 * Math.PI) / 3;
-    const dir = [Math.cos(a), Math.sin(a), 0];
-    const spoke = G.frameAlong([0, 0, TOWER.gyroZ], dir);
-    return [
-      record(A.ball([TOWER.orbit * dir[0], TOWER.orbit * dir[1], TOWER.gyroZ], TOWER.gyroR, { name: `brain.gyro#${index}` })),
-      record(A.disc(spoke, 1.2, TOWER.orbit - TOWER.gyroR + 0.1, 0.12, { name: `brain.gyro#${index}` })),
-    ];
-  });
-  put("brain", [0, 0, TOWER.gyroZ], `<g data-live="gyro"></g>`, { name: "brain.gyros", shapes, bias: 0.3 });
-  turnedOn("brain", F, [[TOWER.lampZ, 1.6], [TOWER.lampZ + 0.8, 1.6], [TOWER.lampZ + 1.2, 1.2]], { tone: "mid", name: "brain.lamp-holder" });
-  const bulb = [0, 0, TOWER.lampZ + 1.2 + 1.3];
-  const lampShape = record(A.ball(bulb, 1.3, { name: "brain.lamp" }));
-  put("brain", bulb, `<g data-live="pilot" class="rb-pilot">${Sv(G.sphereOf(bulb, 1.3, P), { tone: "hi" })}</g>`, { name: "brain.lamp", shapes: [lampShape], bias: 0.2 });
-  // Two ivory reciprocating arms in an inverted V at the front of the tower, hung from a pin
-  // on a bracket that stands on the helmet deck.
-  const apex = [0, 4.2, TOWER.z + 7.4];
-  slab("brain", { x: -0.5, y: apex[1] + 0.35, w: 1, d: 0.8, r: 0.2 }, TOWER.z, apex[2] + 0.6 - TOWER.z, { tone: "mid", steps: 2, bevel: 0, name: "brain.varm-post" });
-  const vShapes = [-1, 1].map((side) => {
-    const lean = 22 * DEG;
-    const down = [side * Math.sin(lean), 0, -Math.cos(lean)];
-    const across = [Math.cos(lean), 0, side * Math.sin(lean)];
-    return record(A.orientedBox(G.add3(apex, G.add3(G.mul3(down, 3.1), [0, 0.15, 0])), [down, across, [0, 1, 0]], [3.1, 0.9, 0.15], { name: "brain.varms" }));
-  });
-  put("brain", [0, 7.5, 193], `<g data-live="varms"></g>`, { name: "brain.varms", bias: 0.5, shapes: vShapes });
-}
-
-// ---------------------------------------------------------------- dome, gland, radar mast
 let MAST;
 {
   const F = Fz(0, 0);
-  const ringShape = record(A.ring(F, S.DOME_RING.z0, S.DOME_RING.z1, S.DOME_RING.rIn, S.DOME_RING.rOut, { name: "dome.ring" }));
-  put("dome", [0, 0, S.DOME_RING.z0 + 0.6], Sv(G.ringBand(S.DOME_RING.z0, S.DOME_RING.z1, S.DOME_RING.rIn, S.DOME_RING.rOut, F, P), { tone: "mid" }) + Dots(G.dotsOf(F, S.DOME_RING.z1, 16.4, 20, P, { fade: FADE }), { size: 0.4 }), { name: "dome.ring", shapes: [ringShape] });
-  const profile = S.sampled(S.DOME.body, S.DOME.z0, S.DOME.z1, 24);
-  const outer = profile.map(([s, r]) => [s, r]);
-  const inner = [...outer].reverse().map(([s, r]) => [s, Math.max(0.2, r - 0.4)]);
-  const glass = record(A.body(F, [...outer, ...inner], { name: "dome.glass" }));
-  const paths = G.solidOf(profile, F, P, { smooth: { slope: S.DOME.body.slope, radius: S.DOME.body.radius } });
-  const shine = [];
-  for (let j = 0; j <= 18; j++) {
-    const z = S.DOME.z0 + 2 + (j * (S.DOME.z1 - S.DOME.z0 - 6)) / 18;
-    const rr = S.DOME.body.radius(z) - 0.1;
-    shine.push(at([rr * Math.sin(-0.85), rr * Math.cos(-0.85), z]));
-  }
-  put("dome", [0, 0, 200], `<g class="rb-glass">${Sv(paths, { tone: "hi" })}</g>` + k.fadeLineSvg(shine, { fade: [10, 10], tone: "mid", className: "rb-shine" }), { name: "dome.glass", shapes: [glass], bias: 2 });
-  discOn("dome", F, S.DOME.z1, S.DOME.z1 + 0.8, 1.9, { tone: "mid", name: "dome.gland" });
-  const from = S.DOME.z1 + 0.8;
-  MAST = { from, to: from + 1.2, stroke: 22, r: 0.5 };
+  discOn("dome", F, SH.top, SH.top + 0.8, 2, { tone: "mid", name: "dome.gland" });
+  const from = SH.top + 0.8;
+  MAST = { from, to: from + 0.8, stroke: 22, r: 0.5 };
   const rod = G.rodOut(F, MAST.from, MAST.to, MAST.r, P, { stroke: MAST.stroke });
   put("dome", [0, 0, MAST.to], `<clipPath id="rb-mast"><path d="${rod.clip}"/></clipPath><g clip-path="url(#rb-mast)"><g data-live="mast">${Sv(rod.paths, { tone: "hi" })}</g></g><g data-live="radar"></g>`, { name: "dome.mast", shapes: [record(A.disc(F, MAST.from, MAST.to, MAST.r, { name: "dome.mast" }))], bias: 0.5 });
 }
@@ -770,17 +910,19 @@ const VU = { x0: CONSOLE.x + 6, x1: CONSOLE.x + 30, w0: 0.24, w1: 0.74, r: 9.4 }
 }
 // The cable from the console's gland to the connector on Robby's right foot.
 {
-  const gland = [CONSOLE.x, 4, CAB_Z0 + 4];
+  // Connector on the outside of the right shoe, low on its side toward the heel.
+  const shoeF = LEG_SHAPES[1].F;
+  const along = -2;
+  const lift = 15 * DEG;
+  const footPoint = G.pointOf(shoeF, along, S.SHOE.radius(along), lift);
+  const nrm = G.radialOf(shoeF, lift);
+  const FC = G.frameAlong(footPoint, nrm);
+  discOn("legs", FC, -0.4, 1.6, 1.6, { tone: "mid", name: "legs.connector", cut: [LEG_SHAPES[1].shoe] });
+  const c0 = G.add3(footPoint, G.mul3(nrm, 1.6));
+  // The console's gland, level with the run across the plate so the cable needs no sideways jog.
+  const gland = [CONSOLE.x, c0[1] - 1.6, CAB_Z0 + 4];
   const FG = G.frameOf(gland, [-1, 0, 0], [0, 1, 0], [0, 0, 1]);
   discOn("stand", FG, 0, 1.6, 1.6, { tone: "mid", name: "stand.gland", extra: Ln(G.circleOf(FG, 1.6, 0.8, P), { tone: "lo" }) });
-  const theta = -18 * DEG;
-  const fz = 6;
-  const fr = S.FOOT.body.radius(fz);
-  const footPoint = [S.LEG_X + fr * Math.cos(theta), fr * Math.sin(theta), fz];
-  const nrm = [Math.cos(theta), Math.sin(theta), 0];
-  const FC = G.frameAlong(footPoint, nrm);
-  discOn("legs", FC, -0.4, 1.6, 1.6, { tone: "mid", name: "legs.connector", cut: [LEG_SHAPES[1].foot] });
-  const c0 = G.add3(footPoint, G.mul3(nrm, 1.6));
   const r = 0.62;
   const lie = PLATE_TOP + r;
   const g1 = [gland[0] - 1.6, gland[1], gland[2]];
@@ -788,7 +930,7 @@ const VU = { x0: CONSOLE.x + 6, x1: CONSOLE.x + 30, w0: 0.24, w1: 0.74, r: 9.4 }
     [
       c0,
       G.add3(c0, G.mul3(nrm, 3)),
-      [c0[0] + 5, c0[1] - 1, r],
+      [c0[0] + 5, c0[1] - 1, r + S.SOLE.h * 0],
       [DAIS_R + 2.2, c0[1] - 2.4, r],
       [DAIS_R + 2.2, c0[1] - 2.4, lie],
       [DAIS_R + 9, c0[1] - 1.6, lie],
@@ -834,15 +976,15 @@ const DATA = {
   lights: LIGHTS,
   keys: KEYS,
   keyrow: KEYROW,
-  grille: GRILLE,
   mast: MAST,
+  shell: { R: S.SHELL.R, base: S.SHELL.base, apex: S.SHELL.apex, q: S.SHELL.q, wall: S.SHELL.wall },
   vu: { centre: SLOPE.point((VU.x0 + VU.x1) / 2, VU.w0 + 0.06), along: SLOPE.along, normal: SLOPE.normal },
   drum: DRUM,
   cards: CARDS.length,
 };
 
 const LABEL =
-  "Robby the Robot on a service riser: stacked-globe legs on a turntable dais, a squat pelvis, a barrel chest with the heart box and sample door, bellows arms with three-finger claws, a flared head with the blue neon voice grille and six relay keys, two spinning ear rings, and a clear dome over a gyro tower. A height gauge reads 214 cm; MGM's control console and microphone feed a cable into the right foot.";
+  "Robby the Robot on a service riser: stacked-globe legs on oval shoes on a turntable dais, a squat pelvis, a barrel chest with the indicator panel and sample door, ribbed arms in ball sockets with three-finger claws, and a bullet head: a black hood with comb fins and two spinning ear rings, a clear cap over a gyro tower, and a clear front window over six relay keys, above a wide brim and the blue neon voice tubes. A height gauge reads 214 cm; MGM's control console and microphone feed a cable into the right shoe.";
 
 const backSvg = k.figureSvg({ width: W, height: H, label: LABEL, body: back, className: "rb-back" });
 const frontSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="iso-svg rb-front" viewBox="0 0 ${W} ${H}" aria-hidden="true"><g class="rb-machine">${groups.join("")}</g></svg>`;

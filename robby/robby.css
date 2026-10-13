@@ -14,9 +14,22 @@
   --rb-cavity: #070707;
   --rb-key: #d9d2c0;
   --rb-glass-fill: 0.16;
+  --rb-glass-tint: #8fb6ff;
   --rb-glass-shade: 0.34;
   --rb-led-off: #2b2b2b;
+  --rb-ind-off: #262626;
   --rb-dial: #0e0e0e;
+  --rb-in-paper: #0a0a0b;
+  --rb-in-face: #101012;
+  --rb-in-top: #121214;
+  --rb-in-0: #070708;
+  --rb-in-1: #09090a;
+  --rb-in-2: #0b0b0c;
+  --rb-in-3: #0d0d0e;
+  --rb-in-hi: #c9c9c9;
+  --rb-in-mid: #6a6a6a;
+  --rb-in-lo: #454545;
+  --rb-in-faint: #262626;
   --rb-button-ring: #ffffff14;
   --rb-button-hover: #232323;
   --rb-part-ring: #ffffff10;
@@ -37,10 +50,23 @@
   --rb-eye-off: #cfdae6;
   --rb-cavity: #d8d8d4;
   --rb-key: #f6f1e4;
-  --rb-glass-fill: 0.42;
+  --rb-glass-fill: 0.22;
+  --rb-glass-tint: #cfe0f5;
   --rb-glass-shade: 0.5;
   --rb-led-off: #cfcfcb;
+  --rb-ind-off: #d6d6d2;
   --rb-dial: #f4f4f0;
+  --rb-in-paper: #3d3f43;
+  --rb-in-face: #45474b;
+  --rb-in-top: #4b4d51;
+  --rb-in-0: #303236;
+  --rb-in-1: #36383c;
+  --rb-in-2: #3c3e42;
+  --rb-in-3: #424448;
+  --rb-in-hi: #e6e6e3;
+  --rb-in-mid: #a9a9a6;
+  --rb-in-lo: #85858a;
+  --rb-in-faint: #5e6064;
   --rb-button-ring: #0000001a;
   --rb-button-hover: #f0f0ed;
   --rb-part-ring: #00000014;
@@ -95,19 +121,43 @@
   vector-effect: non-scaling-stroke;
 }
 
-/* Glass dome: the gyro tower reads through it. */
+/* Glass shell: the chassis and gyro tower read through it, with a faint cool tint. */
 .rb-glass .iso-fill {
+  fill: var(--rb-glass-tint);
   fill-opacity: var(--rb-glass-fill);
 }
 .rb-glass .iso-shade,
 .rb-glass .iso-top {
   fill-opacity: var(--rb-glass-shade);
 }
-.rb-glass [data-seamless] > .iso-shade,
-.rb-glass [data-seamless] > .iso-top {
-  stroke-opacity: var(--rb-glass-shade);
+/* No seam strokes on glass: where two tone bands meet they would double up into streaks. */
+.rb .rb-glass .iso-solid[data-seamless] > .iso-shade[data-shade],
+.rb .rb-glass .iso-solid[data-seamless] > .iso-top {
+  stroke: none;
 }
 
+/* The recess behind the head's window: the flat front of the hood, dark like the chassis. */
+.rb-recess {
+  fill: var(--rb-in-face);
+  stroke: var(--rb-in-lo);
+  stroke-width: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+
+/* The black chassis behind the glass: its own darker token set, as for a cavity. */
+.rb-inner {
+  --anatomy-paper: var(--rb-in-paper);
+  --anatomy-face: var(--rb-in-face);
+  --anatomy-top: var(--rb-in-top);
+  --anatomy-shade-0: var(--rb-in-0);
+  --anatomy-shade-1: var(--rb-in-1);
+  --anatomy-shade-2: var(--rb-in-2);
+  --anatomy-shade-3: var(--rb-in-3);
+  --anatomy-hi: var(--rb-in-hi);
+  --anatomy-mid: var(--rb-in-mid);
+  --anatomy-lo: var(--rb-in-lo);
+  --anatomy-faint: var(--rb-in-faint);
+}
 .rb-ivory .iso-fill,
 .rb-ivory .iso-top,
 .rb-ivory .iso-shade {
@@ -150,6 +200,21 @@
 .rb-eye[data-on] {
   fill: var(--rb-eye);
   filter: drop-shadow(0 0 2px var(--rb-eye));
+}
+.rb-ind {
+  fill: var(--rb-ind-off);
+  stroke: var(--anatomy-lo);
+  stroke-width: 0.4;
+  vector-effect: non-scaling-stroke;
+}
+.rb-ind[data-on]:nth-of-type(3n + 1) {
+  fill: var(--rb-neon);
+}
+.rb-ind[data-on]:nth-of-type(3n + 2) {
+  fill: var(--rb-red);
+}
+.rb-ind[data-on]:nth-of-type(3n) {
+  fill: var(--rb-amber);
 }
 .rb-console-lamp {
   fill: var(--rb-red-off);

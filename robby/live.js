@@ -154,6 +154,7 @@ const parts = {
   rockers: [...machine.querySelectorAll("[data-rocker]")],
   keys: [...machine.querySelectorAll("[data-key]")],
   leds: [...machine.querySelectorAll("[data-led]")],
+  inds: [...machine.querySelectorAll("[data-ind]")],
 };
 const iso = (p) => K.iso(p, P);
 const line = (points) => K.pathOf(points.map(iso));
@@ -211,7 +212,8 @@ function gyroSvg(spin, orbit, arcs) {
       const z0 = T.gyroZ + (rand(b + 20) - 0.5) * 4;
       const from = [1.4 * Math.cos(a), 1.4 * Math.sin(a), z0];
       const zTo = z0 + (rand(b + 30) - 0.5) * 6;
-      const reach = 16.6 * Math.sqrt(Math.max(0, (211 - zTo) / 21.8)) - 0.6;
+      const u = Math.min(1, Math.max(0, (zTo - D.shell.base) / (D.shell.apex - D.shell.base)));
+      const reach = D.shell.R * Math.sqrt(Math.max(0, 1 - Math.pow(u, D.shell.q))) - D.shell.wall - 0.4;
       const to = [reach * Math.cos(a + 0.3), reach * Math.sin(a + 0.3), zTo];
       const points = [];
       for (let s = 0; s <= 6; s++) {
@@ -245,8 +247,7 @@ function earSvg(ear, angle) {
 
 // Two ivory arms in an inverted V at the front of the tower, hinged at the top.
 function vArmsSvg(twitch) {
-  const T = D.tower;
-  const apex = [0, 4.2, T.z + 7.4];
+  const apex = D.tower.apex;
   const out = [];
   for (const side of [-1, 1]) {
     const lean = (22 + side * twitch * 9) * (Math.PI / 180);
@@ -644,6 +645,10 @@ function draw(s, dt, calm) {
     const out = calm ? 0 : 0.35 * (0.5 + 0.5 * Math.sin(keyPhase * 2.3 + index * 1.3)) * (s.drum || s.voice ? 1.6 : 1);
     write(key, "transform", out > 0.02 ? K.translateAlong(P, [0, out, 0]) : null);
   });
+  // Indicator lamps over the keys: a slow chase at rest, quick while he computes.
+  const rate = calm ? 0 : s.rocker || s.drum || s.voice ? 9 : 1.6;
+  const lead = Math.floor(clock * rate) % parts.inds.length;
+  parts.inds.forEach((lamp, index) => on(lamp, calm ? index % 2 === 0 : index === lead || index === (lead + 3) % parts.inds.length));
   const latched = Math.round(s.latched * parts.leds.length);
   parts.leds.forEach((led, index) => on(led, index < latched));
 }

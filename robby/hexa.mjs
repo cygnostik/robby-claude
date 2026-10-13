@@ -62,3 +62,32 @@ export function flapCorners({ hinge, along, up, out, width, height, thick, angle
   const w = width / 2;
   return [p(-w, 0, -thick), p(w, 0, -thick), p(w, height, -thick), p(-w, height, -thick), p(-w, 0, 0), p(w, 0, 0), p(w, height, 0), p(-w, height, 0)];
 }
+
+// Any convex solid from its faces (each a list of 3D points), shaded like hexaPaths.
+// Faces seen edge-on are skipped; the fill and outline are the hull of every corner.
+export function convexPaths(faces, P, { topTone = true } = {}) {
+  const V = viewOf(P);
+  const L = lightOf(P);
+  const all = faces.flat();
+  const centre = all.reduce((sum, p) => [sum[0] + p[0] / all.length, sum[1] + p[1] / all.length, sum[2] + p[2] / all.length], [0, 0, 0]);
+  const buckets = [[], [], [], [], []];
+  const seen = [];
+  for (const face of faces) {
+    let normal = [0, 0, 0];
+    for (let j = 0; j < face.length; j++) {
+      const a = face[j];
+      const b = face[(j + 1) % face.length];
+      normal = [normal[0] + (a[1] - b[1]) * (a[2] + b[2]), normal[1] + (a[2] - b[2]) * (a[0] + b[0]), normal[2] + (a[0] - b[0]) * (a[1] + b[1])];
+    }
+    normal = unit3(normal);
+    const mid = face.reduce((sum, p) => [sum[0] + p[0] / face.length, sum[1] + p[1] / face.length, sum[2] + p[2] / face.length], [0, 0, 0]);
+    if (dot3(normal, sub3(mid, centre)) < 0) normal = normal.map((value) => -value);
+    const visible = dot3(normal, V) > 1e-6;
+    seen.push({ face, visible });
+    if (!visible) continue;
+    const tone = topTone && normal[2] > 0.92 ? 4 : bandOf(dot3(normal, L));
+    buckets[tone].push(pathOf(face.map((p) => iso(p, P)), true));
+  }
+  const hull = pathOf(hullOf(all.map((p) => iso(p, P))), true);
+  return { fill: hull, outline: hull, crease: "", top: buckets[4].join(""), shades: buckets.slice(0, 4).map((list) => list.join("")), seamless: true };
+}

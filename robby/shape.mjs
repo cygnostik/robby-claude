@@ -1,7 +1,7 @@
-// Robby's turned bodies as analytic profiles, in centimetres (1 world unit = 1 cm).
-// Heights are measured from the top of the dais. Proportions come from a 768 × 920
-// studio photograph of the Fred Barton replica (built from the MGM moulds) scaled to
-// the 214 cm overall height Wikipedia gives for the original prop.
+// Robby's bodies as analytic profiles, in centimetres (1 world unit = 1 cm), heights from
+// the top of the dais. Proportions follow a dimensioned CAD drawing of Robby (ArthMat, 2013,
+// in inches; it totals about 84 in, the prop's 7 ft) cross-checked with MGM's construction
+// sheet "Robby, the Robot" and photographs of full-size replicas.
 
 export const HEIGHT = 214;
 
@@ -22,6 +22,9 @@ export function bulb({ R, c, below, above, p }) {
   };
   return { radius, slope };
 }
+
+// The h that makes a superellipse of radius R fall to rEnd at distance d from its widest ring.
+export const reach = (R, rEnd, p, d) => d / Math.pow(1 - Math.pow(rEnd / R, p), 1 / p);
 
 // A barrel: straight between z0 and z1, rounded by superellipse quarters below and above.
 export function barrel({ R, z0, z1, below, above, p }) {
@@ -52,72 +55,114 @@ export function sampled({ radius }, z0, z1, count = 26) {
   return out;
 }
 
-export const FOOT = { z0: 0, z1: 20, body: bulb({ R: 14.4, c: 6, below: 8.1, above: 15.2, p: 2.4 }) };
-export const NECK = { h: 1.4, r: 8 };
-export const GLOBE_H = 17.6;
-export const GLOBE_R = 12.5;
-export const globeAt = (z0) => ({ z0, z1: z0 + GLOBE_H, body: bulb({ R: GLOBE_R, c: z0 + GLOBE_H / 2, below: 10.21, above: 10.21, p: 2.2 }) });
-export const LEG_X = 15.2;
+// ---- legs: an oval shoe on a sole, three squat globes, and necks between them
+export const LEG_X = 17.3;
+export const SOLE = { z: 0, h: 1 };
+// The shoe is turned about a horizontal axis running heel to toe (+y) at the sole's top,
+// so its cross-section is a half circle 28 cm wide and it runs 38 cm long (CAD: 15.71 in).
+export const SHOE = (() => {
+  const R = 14;
+  const mid = 4;
+  const half = 19;
+  const p = 3.2;
+  const radius = (s) => {
+    const t = Math.min(0.999999, Math.abs(s - mid) / half);
+    return R * Math.pow(1 - Math.pow(t, p), 1 / p);
+  };
+  const slope = (s) => {
+    const t = Math.min(0.999999, Math.abs(s - mid) / half);
+    if (t < 1e-9) return 0;
+    const sign = s < mid ? -1 : 1;
+    return (-R * Math.pow(1 - Math.pow(t, p), 1 / p - 1) * Math.pow(t, p - 1) * sign) / half;
+  };
+  // Sampled by the superellipse's own angle so the knots crowd the blunt heel and toe,
+  // where the radius falls fastest; the end caps shrink to a few millimetres.
+  const profile = (count) => {
+    const out = [];
+    for (let index = 0; index <= count; index++) {
+      const theta = 0.0005 + ((Math.PI - 0.001) * index) / count;
+      const c = Math.cos(theta);
+      const s = mid - half * Math.sign(c) * Math.pow(Math.abs(c), 2 / p);
+      out.push(index === 0 || index === count ? [s, radius(s)] : [s, radius(s), 1]);
+    }
+    return out;
+  };
+  const ends = profile(1);
+  return { R, mid, half, s0: ends[0][0], s1: ends[1][0], axisZ: SOLE.h, radius, slope, profile };
+})();
+export const NECK = { h: 1.4, r: 8.5 };
+export const PAD_TOP = 16;
+export function globe(z0, height, R, rEnd, p = 2.3) {
+  const h = reach(R, rEnd, p, height / 2);
+  return { z0, z1: z0 + height, R, body: bulb({ R, c: z0 + height / 2, below: h, above: h, p }) };
+}
 export const LEG_STACK = (() => {
   const out = [];
-  let z = FOOT.z1;
-  for (let index = 0; index < 3; index++) {
-    out.push({ neck: [z, z + NECK.h] });
-    z += NECK.h;
-    out.push({ globe: globeAt(z) });
-    z += GLOBE_H;
-  }
+  let z = PAD_TOP;
+  const plan = [
+    [22, 15.2],
+    [19, 14.2],
+    [21.7, 15.2],
+  ];
+  plan.forEach(([height, R], index) => {
+    if (index) {
+      out.push({ neck: [z, z + NECK.h] });
+      z += NECK.h;
+    }
+    out.push({ globe: globe(z, height, R, NECK.r - 0.5) });
+    z += height;
+  });
   return { parts: out, top: z };
 })();
 
-export const PELVIS = { z0: 77, z1: 108, body: bulb({ R: 25.5, c: 90, below: 22.07, above: 26.08, p: 2.6 }) };
-export const CHEST = { z0: 108, z1: 150, body: barrel({ R: 29.5, z0: 114, z1: 140, below: 10.12, above: 12.99, p: 2.5 }) };
-export const BEARING = { z0: 150, z1: 151.2, rIn: 15, rOut: 21 };
-export const LIP = { z0: 151.2, z1: 152.6, r: 31.2 };
-export const FLARE = {
-  z0: 152.6,
-  z1: 167,
-  body: {
-    radius: (z) => 21.4 + 9.8 * Math.pow(Math.max(0, (167 - z) / 14.4), 1.6),
-    slope: (z) => (-9.8 * 1.6 * Math.pow(Math.max(0, (167 - z) / 14.4), 0.6)) / 14.4,
-  },
-};
-export const HELMET = { z0: 167, z1: 188, rBottom: 20.2, rTop: 17.4, zTop: 186 };
-export const helmetRadius = (z) => HELMET.rBottom + ((HELMET.rTop - HELMET.rBottom) * (z - HELMET.z0)) / (HELMET.zTop - HELMET.z0);
-export const HELMET_SLOPE = (HELMET.rTop - HELMET.rBottom) / (HELMET.zTop - HELMET.z0);
-export const DOME_RING = { z0: 188, z1: 189.2, rIn: 15.6, rOut: 17.2 };
-export const DOME = {
-  z0: 189.2,
-  z1: 210.6,
-  apex: 211,
-  base: 16.6,
-  body: {
-    radius: (z) => 16.6 * Math.sqrt(Math.max(0, (211 - z) / 21.8)),
-    slope: (z) => -16.6 / (2 * Math.sqrt(21.8 * Math.max(0.05, 211 - z))),
-  },
-};
-
-// The helmet: a cone whose top edge rolls over in a quarter ellipse.
-export const HELMET_BODY = (() => {
-  const round = 2.2;
-  const drop = 1;
-  const z1 = HELMET.zTop;
-  const radius = (z) => {
-    const cone = helmetRadius(z);
-    if (z <= z1) return cone;
-    const u = Math.min(0.999, (z - z1) / round);
-    return cone - drop * (1 - Math.sqrt(1 - u * u));
-  };
-  const slope = (z) => {
-    if (z <= z1) return HELMET_SLOPE;
-    const u = Math.min(0.999, (z - z1) / round);
-    return HELMET_SLOPE - (drop * u) / (Math.sqrt(1 - u * u) * round);
-  };
-  return { radius, slope };
+// ---- pelvis, chest
+export const PELVIS = (() => {
+  const z0 = LEG_STACK.top;
+  const z1 = 108;
+  const R = 29;
+  const c = 97;
+  const p = 2.6;
+  return { z0, z1, body: bulb({ R, c, below: reach(R, 26, p, c - z0), above: reach(R, 27.5, p, z1 - c), p }) };
 })();
+export const CHEST = (() => {
+  const R = 37;
+  const p = 2.5;
+  return { z0: 108, z1: 150, R, body: barrel({ R, z0: 116, z1: 140, below: reach(R, 30, p, 8), above: reach(R, 27, p, 10), p }) };
+})();
+export const BEARING = { z0: 150, z1: 151, rIn: 22, rOut: 25 };
+
+// ---- head: the voice collar, the slanted brim, the bullet head and its clear shell
+// The collar's top and the head's open bottom lie in one plane that rises toward the front:
+// 4.45 in above the chest at the back of the shell and 7.19 in at its front (CAD).
+// The voice collar is a drum wider than the head, and the brim (R10.67 in) wider still.
+export const COLLAR = { r: 24.5, z0: 151 };
+export const SLANT = { back: 161.3, front: 168.3, span: 22 };
+export const slantZ = (y) => SLANT.back + ((y + SLANT.span) * (SLANT.front - SLANT.back)) / (2 * SLANT.span);
+export const SLANT_TILT = Math.atan((SLANT.front - SLANT.back) / (2 * SLANT.span));
+export const SLANT_N = [0, -Math.sin(SLANT_TILT), Math.cos(SLANT_TILT)];
+export const SLANT_O = [0, 0, slantZ(0)];
+export const BRIM = { rIn: 21.6, rOut: 26.5, thick: 2 };
+// The head is a bullet, r = R·(1 − t^3.2)^½ from the back of the collar plane to the apex
+// (CAD: about 21 in tall from the back of the brim, 17.34 in across). Above HOOD.top it is
+// all clear plastic; below, the plastic runs down the front only, between the cheeks of a
+// black hood that makes the sides and back and carries the ears and comb fins.
+export const SHELL = { R: 22, wall: 0.4, base: 161, apex: 213.2, top: 212.7, q: 3.2 };
+export const HOOD = { top: 194, window: 50 * (Math.PI / 180) };
+export const shellRadius = (z) => {
+  const t = Math.min(1, Math.max(0, (z - SHELL.base) / (SHELL.apex - SHELL.base)));
+  return SHELL.R * Math.sqrt(Math.max(0, 1 - Math.pow(t, SHELL.q)));
+};
+export const shellSlope = (z) => {
+  const H = SHELL.apex - SHELL.base;
+  const t = Math.min(0.9999, Math.max(1e-6, (z - SHELL.base) / H));
+  return (-SHELL.R * SHELL.q * Math.pow(t, SHELL.q - 1)) / (2 * H * Math.sqrt(Math.max(1e-6, 1 - Math.pow(t, SHELL.q))));
+};
+// The black key chassis: a D in plan, flat across the front behind the window. Below
+// HOOD.top its round back is the hood itself; above, it stands inside the clear cap.
+export const CHASSIS = { front: 11, top: 198 };
 
 // The brass bell under the gyros: an exponential taper from 3.2 to the shaft.
-export const BELL = {
-  radius: (z) => 1.2 + 2 * Math.exp(-(z - 189) / 1.6),
-  slope: (z) => -(2 / 1.6) * Math.exp(-(z - 189) / 1.6),
-};
+export const bellAt = (z0) => ({
+  radius: (z) => 1.2 + 2 * Math.exp(-(z - z0) / 1.6),
+  slope: (z) => -(2 / 1.6) * Math.exp(-(z - z0) / 1.6),
+});
