@@ -1,6 +1,6 @@
 // The page around Fig 1: header, the figure card with its controls, and the dossier.
 import { ISO_CSS } from "../vendor/anatomy/kit/iso-kit.mjs";
-import { DOSSIER, HEADER } from "./dossier.mjs";
+import { DOSSIER, HEADER, FACTS } from "./dossier.mjs";
 
 const LIGHT_ISO = (() => {
   const match = ISO_CSS.match(/\.iso\[data-theme="light"\]\{([^}]*)\}/);
@@ -56,7 +56,7 @@ export function pageOf({ theme, css: rawCss, stage, script, pieces, fragment = f
   const parts = order
     .map((id, index) => `<button type="button" class="rb-part" data-part="${id}"><span class="rb-num">${String(index + 1).padStart(2, "0")}</span>${pieces[id].name}</button>`)
     .join("");
-  const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">Robby · Altair IV pattern</span><span class="iso-plate-corner" data-corner="hint" data-hint>Hover to take apart</span><span class="iso-plate-corner" data-corner="readout" data-readout>214 cm · idle</span></div>`;
+  const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">Robby · Altair IV pattern</span><span class="iso-plate-corner" data-corner="hint" data-hint>Click to take apart</span><span class="iso-plate-corner" data-corner="readout" data-readout>214 cm · idle</span></div>`;
   const controls = `<div class="rb-controls">
 <button type="button" class="rb-act" data-act="speak"><span class="rb-act-lamp" aria-hidden="true"></span>Speak</button>
 <button type="button" class="rb-act" data-act="make"><span class="rb-act-lamp" aria-hidden="true"></span>Synthesize</button>
@@ -72,11 +72,13 @@ export function pageOf({ theme, css: rawCss, stage, script, pieces, fragment = f
 <button type="button" class="rb-act" data-act="apart" aria-pressed="false"><span class="rb-act-lamp" aria-hidden="true"></span>Take apart</button>
 <span class="rb-live" aria-live="polite" data-live></span>
 </div>`;
-  const stageHtml = `<div class="rb-stage" tabindex="0" role="slider" aria-label="Robby the Robot. Hover or use the arrow keys to take him apart assembly by assembly. S speaks, M synthesizes the chosen sample, H gives the order to harm a man, R scans, Escape puts him back together." aria-valuemin="0" aria-valuemax="${order.length}" aria-valuenow="0" aria-valuetext="Assembled, idle">${stage.backSvg}${stage.frontSvg}</div>`;
-  const figure = `<figure class="iso-figure rb"><div class="iso-plate">${corners}${stageHtml}</div><figcaption class="iso-legend">${controls}<span class="rb-parts">${parts}</span><span class="iso-caption">${DOSSIER.caption}</span></figcaption></figure>`;
+  const stageHtml = `<div class="rb-stage" tabindex="0" role="slider" aria-label="Robby the Robot. Click a part, or use the arrow keys, to take him apart assembly by assembly. S speaks, M synthesizes the chosen sample, H gives the order to harm a man, R scans, Escape puts him back together." aria-valuemin="0" aria-valuemax="${order.length}" aria-valuenow="0" aria-valuetext="Assembled, idle">${stage.backSvg}${stage.frontSvg}</div>`;
+  // Controls sit above the drawing and stay in reach while it is on screen; the parts list
+  // and the caption read below it.
+  const figure = `<figure class="iso-figure rb">${controls}<div class="iso-plate">${corners}${stageHtml}</div><figcaption class="iso-legend"><span class="rb-parts">${parts}</span><span class="iso-caption">${DOSSIER.caption}</span></figcaption></figure>`;
   const fonts = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,400;0,500;0,600;0,700;0,800;1,600;1,800&family=Yellowtail&family=Space+Mono:wght@400;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">`;
   const styles = `<style>${ISO_CSS}${THEME_CSS}${PAGE_CSS}${DOSSIER.css}${css}</style>`;
-  const body = `<main class="pg iso">${HEADER}${figure}${DOSSIER.html}</main><script type="module">${script}</script>`;
+  const body = `<main class="pg iso">${HEADER}${figure}${FACTS}${DOSSIER.html}</main><script type="module">${script}</script>`;
   const title = "<title>Robby the Robot Anatomy</title>";
   if (fragment) return `${title}${fonts}${styles}${body}`;
   const rootTheme = theme === "auto" ? "" : ` data-theme="${theme}"`;

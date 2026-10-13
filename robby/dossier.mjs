@@ -11,6 +11,11 @@ export const HEADER = `
   <p class="pg-eyebrow">Anatomy · <i>Forbidden Planet</i>, MGM 1956</p>
   <h1 class="pg-title"><span class="pg-title-name">Robby</span> <span class="pg-title-hand">the Robot</span></h1>
   <p class="pg-dek">How the machine works, twice over. MGM built him in 1955 as a three-piece suit with a stuntman inside and a cable running out of his heel. On screen he is Dr. Morbius's servant on Altair IV, with a chemical laboratory in his belly and an inhibition that no order can override. This page draws both, and tags every claim by where it comes from.</p>
+</header>`;
+
+// The numbers and the source key, read after the figure.
+export const FACTS = `
+<section class="pg-facts" aria-label="Robby in numbers">
   <dl class="pg-stats">
     <div><dt>Height</dt><dd>214<small> cm</small></dd><span>just over 7 ft${cite(3)}</span></div>
     <div><dt>Suit</dt><dd>45–54<small> kg</small></dd><span>100–120 lb, carried on a shoulder harness${cite(4, 10)}</span></div>
@@ -25,18 +30,18 @@ export const HEADER = `
     <li>${tag("prop")} the physical MGM build, its restoration and sale</li>
     <li>${tag("spec")} our engineering reading; not on screen</li>
   </ul>
-</header>`;
+</section>`;
 
 const systems = [
   {
     n: "01",
-    title: "Clear shell, ears and radar mast",
+    title: "Clear shell and ears",
     rows: [
       ["prop", `MGM's construction sheet calls it the ${q("clear plastic dome")}${cite(16)}, but it is not a dome. The head is a bullet 17.34 in across and about 21 in tall on ArthMat's dimensioned drawing, standing on a brim cut on a slant: 4.45 in above the chest at the back and 7.19 in at the front${cite(15)}. The Plexiglas covers the whole upper part of that bullet. Below the ears it runs on down the front only, as a window over the keys, between the cheeks of a black hood that makes the sides and back${cite(15, 17)}. Seen past the glare in photographs, the clear part is a cap with a tongue hanging down the front.`],
       ["prop", `The model shop's schedule gave the plastic dome three weeks, 15 February to 8 March 1955${cite(7)}. When Fred Barton first saw the prop in 1973 it had yellowed${cite(6)}.`],
-      ["script", `Robby turns his whole dome through 180 degrees to face his passengers, and ${q("a small radar antenna has come up out of Robby's dome, and is slowly rotating")} when he scans for Altaira${cite(2)}.`],
+      ["script", `Robby turns his whole dome through 180 degrees to face his passengers, and ${q("a small radar antenna has come up out of Robby's dome, and is slowly rotating")} when he scans for Altaira${cite(2)}. No photograph of the prop that we found shows one, so the figure leaves it out.`],
       ["film", `He reports ${q("Something is approaching from the southwest. It is now quite close.")} The monster arrives minutes later${cite(1)}.`],
-      ["spec", `Altair IV's air is high in oxygen, and Robby says it ${q("promotes rust")}${cite(1)}. A sealed shell keeps the key chassis and gyros out of it. The mast in the figure rises 22 cm through a gland at the apex, so the radar can sweep without the head turning. Take the figure apart and the clear shell lifts off whole, so its shape can be read on its own.`],
+      ["spec", `Altair IV's air is high in oxygen, and Robby says it ${q("promotes rust")}${cite(1)}. A sealed shell keeps the key chassis and gyros out of it. Take the figure apart and the clear shell lifts off whole, so its shape can be read on its own.`],
     ],
   },
   {
@@ -44,6 +49,7 @@ const systems = [
     title: "Gyro tower and pilot lamp",
     rows: [
       ["prop", `MGM's sheet labels the top of the head ${q("revolving gadgets")}${cite(16)}. Inside the glass: a pilot light at the very top, three white wire-frame spheres that orbit in planetary fashion to represent gyroscopic stabilizers, and a pair of reciprocating arms in an inverted V${cite(3)}. Barton's replica, moulded from the original, mounts the gyros on a spun brass bell under a heat sink and lamp housing${cite(5)}. The mechanisms were loud when powered up${cite(3)}.`],
+      ["prop", `Photographs of the original at the 2017 auction preview show each gyro as an ivory wire disc, about 8 cm across, of concentric rings crossed by two hoops. Each rides on an arm from a black knob on the bell's flank, and the lamp sits in a clear egg-shaped cage on top of a stack of chrome fins${cite(18)}. The figure leaves out the inverted-V arms, so the gyros fill the cap and read clearly.`],
       ["script", `Robby calls his built-in reflexes ${q("infallible")} and drives Morbius's car fast enough that the Doc begs him to keep it under ninety${cite(2)}.`],
       ["spec", `A seven-foot walker on small, stiff steps needs a balance reference. Read as working parts, the three gyros are rate sensors on one carrier, and the figure spins them faster whenever Robby is computing: when he composes speech, analyses a sample, or fights an order.`],
     ],
@@ -52,9 +58,9 @@ const systems = [
     n: "03",
     title: "Head: voice tubes and key chassis",
     rows: [
-      ["prop", `Behind the window the hood is flat and black, with vent slots, a strip of small indicator bulbs, a row of keys on coil springs and a red lamp at each end. Above the hood the same black chassis carries the gyro tower on its top deck, inside the clear cap${cite(15, 17)}. Comb fins stand out from each cheek between the brim and the ears${cite(15)}.`],
+      ["prop", `Behind the window the hood is flat and black, with vent slots and six relay units: cream bobbin drums between black flanges, each with a chrome lever like a typewriter's typebar or a saxophone key, pushed by a clear rod hanging from a rod of amber glass beads. Below them, clear Lucite rods bend down into finned stacks and a finned glass cylinder, the optical plumbing, which glows blue-white when lit. A large red domed lamp sits at each end${cite(17, 18)}. Above the hood the same black chassis carries the gyro tower on its top deck, inside the clear cap${cite(15, 17)}. Comb fins stand out from each cheek between the brim and the ears${cite(15)}. The brim is not a flat ring. It is a narrow rolled lip that flares out of the hood across the front only and dives steeply to the chest just behind the sides, so from the front it reads as an arch over the voice window${cite(15, 18)}.`],
       ["prop", `The mouth is a collar of parallel thin blue neon tubes, MGM's ${q("voice tubes")}${cite(16)}, that light in step with his speech. The same grille let the operator see out and breathe${cite(3)}. On set an off-camera actor spoke into a microphone, and a voice-actuated circuit ran through a cable into Robby's foot, up a leg, to the neon. Marvin Miller re-recorded the voice afterwards${cite(3)}.`],
-      ["prop", `The ears are two rotating chrome rings, MGM's ${q("rotating rings")}${cite(16)}, one on a horizontal shaft and one on a post. The CAD drawing tilts that post 30 degrees${cite(15)}. The eyes are two small blinking lights on cones, and across the front sits a row of levers like saxophone keys${cite(3)}. On the drawings and replicas the cones are the ear hubs on the hood's cheeks, so the eyes look forward from either side of the window. The left hub's whiskers stand up in a V; the right hub's point outward${cite(15, 17)}. On Barton's replica six relays strike in turn, three times each, just before Robby speaks${cite(5)}.`],
+      ["prop", `The ears are two rotating chrome rings, MGM's ${q("rotating rings")}${cite(16)}, one on a horizontal shaft and one on a post. The post stands upright on MGM's sheet, on the CAD drawing and in every photograph; the CAD's 30-degree mark is the angle between the two fins on that ear${cite(15, 16, 18)}. The eyes are two small blinking lights on cones, and across the front sits a row of levers like saxophone keys${cite(3)}. On the drawings and replicas the cones are the ear hubs on the hood's cheeks, so the eyes look forward from either side of the window. The fins are flat clear acrylic, not spikes. Robby's right ear, on the horizontal shaft, carries two open petals standing up in a V. His left ear, on the post, carries two swept fins pointing outward in a 30-degree V${cite(15, 17, 18)}. On Barton's replica six relays strike in turn, three times each, just before Robby speaks${cite(5)}.`],
       ["script", `Asked how he drives without looking, Robby answers ${q("I do everything by positronic transfiguration")}, and winks several lights to prove it${cite(2)}.`],
       ["spec", `Two scanners on crossed axes sweep a whole sphere between them, which is why one turns horizontally and one vertically. The six keys read as the output stage of a speech composer: they strike, then the neon carries the words.`],
     ],
@@ -66,6 +72,7 @@ const systems = [
       ["film", `Morbius demonstrates: ${q("One introduces a sample of human food through this aperture. Down here there's a small built-in chemical laboratory where he analyzes it.")} Later Robby reproduces the molecules ${q("in any shape or quantity")}${cite(1)}.`],
       ["script", `The aperture is ${q("jaw-like")}, and reproduction happens ${q("right in his own workshop")}${cite(2)}.`],
       ["prop", `The barrel shape is a nod to Kinoshita's earlier work designing washing machines. Below the sample door sit two rotating discs with flashing lights and a row of five buttons that move in and out${cite(3)}. Barton calls this the heart box: an oscillating acrylic star, a brass quad light that turns, and pulsating piano keys${cite(5)}. MGM's sheet names the whole box the ${q("analyzing hopper & indicator panel")}${cite(16)}. It is 10.74 in wide on the CAD drawing, standing proud of a barrel 16.5 in tall${cite(15)}.`],
+      ["prop", `On the original the panel is moulded in the body's own dark lacquer and framed by a chain of beads. Inside it, from the top: a dark hopper mouth, a convex roll-top door, a ledge, then a faceted clear lens holding a four-pointed star beside a brass disc with four chrome rivets on a diamond, and four narrow dark keys in slots${cite(16, 18)}.`],
       ["prop", `Wikipedia counts five buttons${cite(3)}. The CAD drawing, MGM's sheet and the replicas we followed all show four, and so does the figure${cite(15, 16, 17)}.`],
       ["spec", `In the figure the door drops like a jaw into a small tray, the throat behind it feeds the analyzer drum in the core, and the keys stand out further while the lab is working.`],
     ],
@@ -82,11 +89,11 @@ const systems = [
     n: "06",
     title: "Arms and hands",
     rows: [
-      ["prop", `MGM's sheet calls each shoulder a ${q("flexible sleeve & ball socket")}, draws the ${q("arm in locked position")}, and specifies a ${q("tool adaptor & tools")}${cite(16)}. On the CAD drawing the sockets sit in round shoulder pods of radius 6.50 in at the barrel's front corners${cite(15)}. Each pod swells out of a ribbed collar, and the arm comes out of a ball in its face: three rubber rings stepping down from the shoulder, a big wrist bulb with a flange round its widest point, the tool adaptor, and a rubber hand, two flat, jointed fingers side by side over a thumb. In studio stills and on the poster the arms reach forward, as they do here${cite(15, 17)}.`],
+      ["prop", `MGM's sheet calls each shoulder a ${q("flexible sleeve & ball socket")}, draws the ${q("arm in locked position")}, and specifies a ${q("tool adaptor & tools")}${cite(16)}. On the CAD drawing each arm starts in a ball of radius 6.50 in, sunk into the barrel's front corner right beside the panel${cite(15)}. It is the arm's only joint. Out of the ball's face come four fat rubber rolls, each a little smaller, then a rolled lip ring round the base of a half ball cut flat at its tip. Out of the cut come the tool adaptor and a rubber mitten: two long, jointed fingers one above the other in a V, with a short thumb on the inner side. The rolls and the half ball are nearly as fat as the shoulder ball. In studio stills and on the poster the arms reach forward and down, as they do here${cite(15, 17, 18)}.`],
       ["prop", `Thick, stubby arms on plastic ball joints with limited rotation. They can extend under an expanding concertina sheath of rubber, and end in three-fingered rubber hands painted gunmetal grey${cite(3)}. The Bonhams lot included alternate claw hands${cite(4)}.`],
       ["film", `${q("Tremendously strong, of course. He could quite easily topple this house off its foundation.")} He carries ten tons of isotope 217 on his vehicle, and the wounded Doc is the only person he ever carries${cite(1, 3)}.`],
       ["script", `Morbius asks for a Stillson wrench, and Robby detaches his own left hand and fits the wrench in its place. Spare parts, one of them a metal hand, ride clipped to his body${cite(2)}.`],
-      ["spec", `Swappable tools imply a standard wrist coupling, which MGM's tool adaptor makes explicit; it is drawn here as the collar between sleeve and palm. The arms leave their sockets along the pod's axis when the figure comes apart.`],
+      ["spec", `Swappable tools imply a standard wrist coupling, which MGM's tool adaptor makes explicit; it is drawn here as the collar between the half ball and the hand. The arms lift out of their sockets when the figure comes apart.`],
     ],
   },
   {
@@ -94,8 +101,9 @@ const systems = [
     title: "Pelvis and hip hinges",
     rows: [
       ["prop", `The lower section hinges at the top of the legs, so the suit can bend forward and swing slightly, and the globes hide the operator's hips and knees${cite(3)}. The weight of all three sections hung from a flying harness on the actor's shoulders, and a special frame let him rest between takes${cite(10)}.`],
+      ["prop", `On each side of the pelvis a flat plate, round on top (R 3.50 in on the CAD side view) and narrowing to a tongue over the top leg globe, carries a crank lever: a round head on a bolt, with a bar running down onto the globe. A curved waist seam dips at the front, and a V-shaped line runs from each hip down to the crotch${cite(15, 18)}.`],
       ["script", `At the car Robby ${q("goes round in front, sits down, engaging his rear end in the drive mechanism")}${cite(2)}. He plugs into his vehicle.`],
-      ["spec", `The hip pivots in the figure double as that drive coupling: the same joint that lets him bend would carry torque into the car.`],
+      ["spec", `The hip cranks in the figure double as that drive coupling: the same joint that lets him bend would carry torque into the car.`],
     ],
   },
   {
@@ -167,7 +175,7 @@ const specs = [
   ["Weight", "100–120 lb (45–54 kg)", [10, 11]],
   ["Sections", "three: legs and lower torso; barrel chest with arms; head", [3]],
   ["Materials", "Royalite ABS, vacuum-formed; Plexiglas dome; rubber hands; aluminium; acetate; wood", [3, 10, 11]],
-  ["Head", "black hood with a clear Plexiglas cap and front window: pilot lamp, three wire gyros, inverted-V arms, sax-key levers, two blinking eyes on the ear hubs, two rotating ear rings, comb fins, blue neon mouth", [3, 15]],
+  ["Head", "black hood with a clear Plexiglas cap and front window: pilot lamp, three wire gyros, six relay keys with sax-key levers, two blinking eyes on the ear hubs, two rotating ear rings, comb fins, blue neon mouth", [3, 15]],
   ["Shell", "17.34 in across, about 21 in tall; brim 4.45 in above the chest at the back, 7.19 in at the front; brim R 10.67 in", [15]],
   ["Neck", "custom bearing; head turns either way", [3]],
   ["Chest", "barrel 16.5 in tall; sample door, two rotating discs, four moving buttons (Wikipedia: five)", [3, 15]],
@@ -206,17 +214,19 @@ const sources = [
   ["ArthMat, Robby the Robot, dimensioned CAD drawing in inches, sheet 1 of 1, rev 2, 21 Mar 2013 (reference image supplied with this commission)", null],
   ["MGM, Robby, the Robot: construction drawing with part callouts, shown beside a 3D overlay (reference image supplied with this commission)", null],
   ["Photographs of full-size replicas and a life-size figure, a model kit, and renders of the clear shell (reference images supplied with this commission)", null],
+  ["Mike Ogrinz, photographs of the original prop at the Bonhams preview, New York, November 2017, and of his full-size replica", "https://ogrinz.com/"],
 ];
 
 export const DOSSIER = {
   caption:
-    "Robby on a turntable dais, beside MGM's rolling control panel. Take him apart and the clear shell, head, arms and chest lift away in turn, the outermost first, to show the key chassis, the gyro tower and a laboratory core that is our speculation. Speak strikes the six relay keys, then lights the neon with each syllable while the console's needle follows the voice. Synthesize opens the sample door and runs a sample from the film. The order to fire latches the inhibition relays until it is cancelled. Scan raises the radar mast from the 1954 script.",
+    "Robby on a turntable dais, beside MGM's rolling control panel. Take him apart and the clear shell, head, arms and chest lift away in turn, the outermost first, to show the key chassis, the gyro tower and a laboratory core that is our speculation. Speak strikes the six relay keys, then lights the neon with each syllable while the console's needle follows the voice. Synthesize opens the sample door and runs a sample from the film. The order to fire latches the inhibition relays until it is cancelled. Scan spins up the ear rings and gyros and sweeps the eye lamps from side to side.",
   css: `
 .rb-visually{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.pg-head{display:grid;gap:18px;margin-block:12px 28px}
+.pg-head{display:grid;gap:18px;margin-block:12px 20px}
+.pg-facts{display:grid;gap:18px;margin-block:28px 8px}
 .pg-eyebrow{margin:0;font:500 12px/1.4 var(--pg-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--pg-muted)}
 .pg-title{position:relative;margin:0 0 22px;padding-block:.06em .1em;line-height:.8;isolation:isolate}
-.pg-title::before{content:"";position:absolute;z-index:-1;left:-.12em;top:.1em;width:min(5.6em,92%);height:.8em;border:2px solid var(--pg-coral);border-radius:50%;transform:rotate(-9deg);opacity:.5;font-size:clamp(64px,13vw,156px)}
+.pg-title::before{content:"";position:absolute;z-index:-1;left:-.12em;top:.1em;width:min(5.6em,92%);height:.8em;border:1.5px solid var(--pg-coral);border-radius:50%;transform:rotate(-9deg);opacity:.5;font-size:clamp(64px,13vw,156px)}
 .pg-title::after{content:"";position:absolute;z-index:-1;left:min(5.05em,84%);top:.16em;width:.1em;height:.1em;border-radius:50%;background:var(--pg-coral);font-size:clamp(64px,13vw,156px)}
 .pg-title-name{display:inline-block;font:800 italic clamp(64px,13vw,156px)/.86 var(--pg-display);letter-spacing:-.01em;text-transform:uppercase;color:var(--pg-ink)}
 .pg-title-hand{display:inline-block;margin-left:-.1em;font:400 clamp(38px,6.6vw,80px)/1 var(--pg-hand);color:var(--pg-coral);transform:rotate(-7deg) translateY(.12em);text-transform:none;letter-spacing:0}
@@ -238,8 +248,8 @@ export const DOSSIER = {
 .cite a{text-decoration:none}
 .pg q{quotes:"\\201C" "\\201D";font-style:italic}
 .pg-sec{margin-top:56px}
-.pg-sec>h2{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin:0 0 6px;font:800 italic clamp(30px,4.6vw,46px)/1 var(--pg-display);text-transform:uppercase;letter-spacing:-.005em}
-.pg-sec>h2::before{content:"✦";align-self:center;font:400 .5em/1 var(--pg-sans);color:var(--pg-coral);font-style:normal}
+.pg-sec>h2{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:0 0 8px;font:500 clamp(26px,3.4vw,34px)/1.05 var(--pg-display);text-transform:uppercase;letter-spacing:.08em}
+.pg-sec>h2::before{content:"";flex:none;width:22px;height:12px;background:var(--pg-coral);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 12'%3E%3Cg fill='none' stroke='black' stroke-width='1.25'%3E%3Ccircle cx='11' cy='6' r='4'/%3E%3Cellipse cx='11' cy='6' rx='9.4' ry='2.5' transform='rotate(-14 11 6)'/%3E%3C/g%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 12'%3E%3Cg fill='none' stroke='black' stroke-width='1.25'%3E%3Ccircle cx='11' cy='6' r='4'/%3E%3Cellipse cx='11' cy='6' rx='9.4' ry='2.5' transform='rotate(-14 11 6)'/%3E%3C/g%3E%3C/svg%3E") center/contain no-repeat}
 .pg-sec>h2 small{font:500 11px/1 var(--pg-mono);letter-spacing:.12em;color:var(--pg-muted)}
 .pg-sec>p.lede{margin:0 0 22px;max-width:66ch}
 .sys-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:1px;background:var(--pg-rule);border:1px solid var(--pg-rule)}
@@ -340,7 +350,7 @@ export const DOSSIER = {
 
 <section class="pg-sec" id="method">
   <h2>How the figure was made</h2>
-  <p class="notes">Proportions come from ArthMat's dimensioned CAD drawing, in inches, scaled to Wikipedia's 214 cm${cite(15, 3)}. Part names come from MGM's construction sheet${cite(16)}. Photographs of replicas and renders of the clear shell settled what the drawings leave open, chiefly where the clear plastic stops. It covers the cap of the bullet head and runs down the front as a window. A black hood makes the cheeks and back, carries the ears and comb fins, and shows through the window as a dark recess behind the keys${cite(17)}. Materials and light follow 1950s publicity stills rather than a technical plate: black lacquer with an airbrushed highlight down every curve, chrome trim, a brass bell under the gyros, and a glint on the clear plastic. The console follows Bonhams' dimensions. Every turned body (shoes, globes, pelvis, barrel, shoulder pods, forearm rings, collar, brim, head) is an analytic profile, and every part records its true shape, so a geometry audit can check that nothing passes through anything at rest, apart, or at any moment in between. The laboratory core and the readings marked Speculative are ours. Drawn with the Anatomy skill's kit.${cite(14)}</p>
+  <p class="notes">Proportions come from ArthMat's dimensioned CAD drawing, in inches, scaled to Wikipedia's 214 cm${cite(15, 3)}. Part names come from MGM's construction sheet${cite(16)}. Photographs of replicas and renders of the clear shell settled what the drawings leave open, chiefly where the clear plastic stops. It covers the cap of the bullet head and runs down the front as a window. A black hood makes the cheeks and back, carries the ears and comb fins, and shows through the window as a dark recess behind the keys${cite(17)}. Photographs of the original prop at the 2017 auction preview set the sizes of the arms, the hips, the chest panel, the ears and the gyros${cite(18)}. Materials and light follow 1950s publicity stills rather than a technical plate: black lacquer with an airbrushed highlight down every curve, chrome trim, a brass bell under the gyros, and a glint on the clear plastic. The console follows Bonhams' dimensions. Every turned body (shoes, globes, pelvis, barrel, shoulder balls, arm rolls, half balls, fingers, collar, brim, head) is an analytic profile, and every part records its true shape, so a geometry audit can check that nothing passes through anything at rest, apart, or at any moment in between. The laboratory core and the readings marked Speculative are ours. Drawn with the Anatomy skill's kit.${cite(14)}</p>
 </section>
 
 <section class="pg-sec" id="sources">

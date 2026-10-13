@@ -91,3 +91,19 @@ export function convexPaths(faces, P, { topTone = true } = {}) {
   const hull = pathOf(hullOf(all.map((p) => iso(p, P))), true);
   return { fill: hull, outline: hull, crease: "", top: buckets[4].join(""), shades: buckets.slice(0, 4).map((list) => list.join("")), seamless: true };
 }
+
+// The hopper door: a convex roll-top hinged along its lower edge and tipped forward by angle.
+// Gives a frame and a cross-section for a prism, s running along the hinge.
+export function rollTop({ hinge, along, up, out, height, thick, bulge, angle }) {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  const u = [up[0] * c + out[0] * s, up[1] * c + out[1] * s, up[2] * c + out[2] * s];
+  const v = [out[0] * c - up[0] * s, out[1] * c - up[1] * s, out[2] * c - up[2] * s];
+  const R = (height * height) / 4 / (2 * bulge) + bulge / 2;
+  const poly = [[0, -thick], [height, -thick]];
+  for (let i = 0; i <= 16; i++) {
+    const t = height * (1 - i / 16);
+    poly.push([t, Math.sqrt(Math.max(0, R * R - (t - height / 2) ** 2)) - (R - bulge)]);
+  }
+  return { F: { o: hinge, a: along, u, v }, poly };
+}

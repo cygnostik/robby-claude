@@ -38,8 +38,6 @@ const ORDER = ["dome", "brain", "head", "chest", "core", "armR", "pelvis", "legs
 let clock = 0;
 let apart = false;
 let selected = null;
-let inside = false;
-let leaveTimer = 0;
 let touring = !still.matches;
 let tourClock = -1.4;
 let idleTimer = 0;
@@ -136,15 +134,12 @@ const parts = {
   gyro: q("gyro"),
   earL: q("earL"),
   earR: q("earR"),
-  varms: q("varms"),
   pilot: q("pilot"),
   door: q("door"),
   star: q("star"),
   quad: q("quad"),
   drum: q("drum"),
   needle: q("needle"),
-  mast: q("mast"),
-  radar: q("radar"),
   lampL: q("lampL"),
   lampR: q("lampR"),
   eyeL: q("eyeL"),
@@ -181,22 +176,39 @@ const html = (el, value) => {
 };
 const on = (el, flag) => write(el, "data-on", flag ? "" : null);
 
+// Three ivory wire gyros, each a disc of concentric rings crossed by two hoops, riding on an arm
+// from a knob on the bell that passes through it as an axle; each spins about its arm while
+// the carrier turns them round the bell. Drawn back to front.
 function gyroSvg(spin, orbit, arcs) {
   const out = [];
   const T = D.tower;
-  for (let index = 0; index < 3; index++) {
+  const V = D.V;
+  const order = [0, 1, 2].map((index) => {
     const a = orbit + (index * TAU) / 3;
-    const c = [T.orbit * Math.cos(a), T.orbit * Math.sin(a), T.gyroZ];
-    const hub = [1.3 * Math.cos(a), 1.3 * Math.sin(a), T.gyroZ];
-    const rim = add(c, mul(G.unit3(G.sub3(hub, c)), T.gyroR));
-    out.push(`<path class="rb-wire" d="${line([hub, rim])}"/>`);
-    const rings = [0, 1, 2].map((j) => {
-      const tilt = spin * (1 + index * 0.27) + (j * Math.PI) / 3;
-      const n = [Math.cos(tilt) * Math.cos(a), Math.cos(tilt) * Math.sin(a), Math.sin(tilt)];
+    return { index, a, depth: T.orbit * (Math.cos(a) * V[0] + Math.sin(a) * V[1]) };
+  }).sort((p, q) => p.depth - q.depth);
+  for (const { index, a } of order) {
+    const dir = [Math.cos(a), Math.sin(a), 0];
+    const c = [T.orbit * dir[0], T.orbit * dir[1], T.gyroZ];
+    const knob = [1.75 * dir[0], 1.75 * dir[1], T.gyroZ - 3];
+    const axle = G.unit3(G.sub3(c, knob));
+    const far = add(c, mul(axle, T.gyroR));
+    const kF = G.frameAlong(knob, axle);
+    out.push(K.solidSvg(G.disc(-0.5, 0.8, 0.85, kF, P), { tone: "mid" }));
+    out.push(`<path class="rb-gyro-arm" d="${line([knob, far])}"/>`);
+    const centre = iso(c);
+    out.push(`<circle class="rb-gyro-body" cx="${centre[0].toFixed(2)}" cy="${centre[1].toFixed(2)}" r="${(T.gyroR * D.KS).toFixed(2)}"/>`);
+    const F0 = G.frameAlong(c, axle);
+    const turn = spin * (1 + index * 0.27);
+    const across = add(mul(F0.u, Math.cos(turn)), mul(F0.v, Math.sin(turn)));
+    const normal = G.cross3(axle, across);
+    const circle = (n, r) => {
       const F = G.frameAlong(c, n);
-      return line(Array.from({ length: 37 }, (_, t) => G.pointOf(F, 0, T.gyroR, (t / 36) * TAU)));
-    });
-    out.push(`<path class="rb-wire" data-tone="hi" d="${rings.join("")}"/>`);
+      return line(Array.from({ length: 41 }, (_, t) => G.pointOf(F, 0, r, (t / 40) * TAU)));
+    };
+    const wires = [1, 0.8, 0.6, 0.4, 0.2].map((f) => circle(normal, T.gyroR * f));
+    for (const tilt of [Math.PI / 3, -Math.PI / 3]) wires.push(circle(add(mul(normal, Math.cos(tilt)), mul(across, Math.sin(tilt))), T.gyroR));
+    out.push(`<path class="rb-gyro rb-gyro-under" d="${wires.join("")}"/><path class="rb-gyro" d="${wires.join("")}"/>`);
   }
   if (arcs > 0.02) {
     // Crackle between the tower and the dome wall while the relays fight an order.
@@ -245,61 +257,44 @@ function earSvg(ear, angle) {
     .join("");
 }
 
-// Two ivory arms in an inverted V at the front of the tower, hinged at the top.
-function vArmsSvg(twitch) {
-  const apex = D.tower.apex;
-  const out = [];
-  for (const side of [-1, 1]) {
-    const lean = (22 + side * twitch * 9) * (Math.PI / 180);
-    const down = [side * Math.sin(lean), 0, -Math.cos(lean)];
-    const across = [Math.cos(lean), 0, side * Math.sin(lean)];
-    const length = 6.2;
-    const width = 0.9;
-    const thick = 0.3;
-    const p = (u, v, w) => add(apex, add(mul(down, u), add(mul(across, v), [0, w, 0])));
-    const corners = [p(0, -width, 0), p(0, width, 0), p(length, width, 0), p(length, -width, 0), p(0, -width, thick), p(0, width, thick), p(length, width, thick), p(length, -width, thick)];
-    out.push(`<g class="rb-ivory">${K.solidSvg(X.hexaPaths(corners, P), { tone: "mid" })}</g>`);
-  }
-  out.push(K.dotsSvg([iso(add(apex, [0, 0.3, 0]))], { size: 0.6, tone: "hi" }));
-  return out.join("");
-}
-
+// The hopper door: a convex roll-top that tips forward on its lower edge.
 function doorSvg(angle) {
   const F = D.flap;
-  const corners = X.flapCorners({ ...F, angle });
-  const c = Math.cos(angle);
-  const s = Math.sin(angle);
-  const up = [F.up[0] * c + F.out[0] * s, F.up[1] * c + F.out[1] * s, F.up[2] * c + F.out[2] * s];
-  const slotAt = (x, h) => add(add(F.hinge, mul(F.along, x)), mul(up, h));
-  const lift = [F.out[0] * c - F.up[0] * s, F.out[1] * c - F.up[1] * s, F.out[2] * c - F.up[2] * s];
-  const h = F.height - 2;
-  const slot = [slotAt(-3, h - 0.4), slotAt(3, h - 0.4), slotAt(3, h + 0.4), slotAt(-3, h + 0.4)].map((p) => add(p, mul(lift, 0.02)));
-  return K.solidSvg(X.hexaPaths(corners, P), { tone: "hi" }) + `<path class="iso-line" data-tone="lo" d="${K.pathOf(slot.map(iso), true)}"/>`;
+  const { F: frame, poly } = X.rollTop({ ...F, angle });
+  return K.solidSvg(G.prismOf(frame, poly, -F.width / 2, F.width / 2, P), { tone: "hi" });
 }
 
+// The left lamp, the "oscillating star light": a four-pointed star in a faceted clear lens,
+// turning slowly.
 function starSvg(angle) {
-  const [x0, x1] = D.lights.xs;
-  const c = [x0, D.hb.face + 0.9, D.lights.z];
-  const spikes = [];
-  for (let index = 0; index < 6; index++) {
-    const a = angle + (index * TAU) / 6;
-    const r = index % 2 ? 1.2 : 2.1;
-    spikes.push(line([c, add(c, [Math.cos(a) * r, 0, Math.sin(a) * r])]));
+  const c = [D.lights.xs[0], D.hb.face + 0.9, D.lights.z];
+  const g = D.lights.glass;
+  const pts = [];
+  for (let i = 0; i < 4; i++) {
+    const a0 = angle + (i * Math.PI) / 2;
+    const a1 = a0 + Math.PI / 2;
+    const tip0 = [Math.cos(a0) * g * 0.82, Math.sin(a0) * g * 0.82];
+    const tip1 = [Math.cos(a1) * g * 0.82, Math.sin(a1) * g * 0.82];
+    const mid = [Math.cos((a0 + a1) / 2) * g * 0.08, Math.sin((a0 + a1) / 2) * g * 0.08];
+    for (let j = 0; j < 8; j++) {
+      const t = j / 8;
+      const x = (1 - t) ** 2 * tip0[0] + 2 * (1 - t) * t * mid[0] + t * t * tip1[0];
+      const z = (1 - t) ** 2 * tip0[1] + 2 * (1 - t) * t * mid[1] + t * t * tip1[1];
+      pts.push(iso(add(c, [x, 0, z])));
+    }
   }
-  return `<path class="rb-star" d="${spikes.join("")}"/>`;
+  return `<path class="rb-star" d="${K.pathOf(pts, true)}"/>`;
 }
 
-function quadSvg(angle) {
+// The right lamp, the "quad light": a brass disc with four chrome rivets on a diamond, lit one
+// after another.
+function quadSvg(lit) {
   const c = [D.lights.xs[1], D.hb.face + 0.9, D.lights.z];
-  const out = [];
-  const F = G.frameOf(c, [0, 1, 0], [1, 0, 0], [0, 0, 1]);
-  out.push(`<path class="rb-quad" d="${G.circleOf(F, 0, 0.9, P)}"/>`);
-  for (let index = 0; index < 4; index++) {
-    const a = angle + (index * TAU) / 4;
-    const lug = G.frameOf(add(c, [Math.cos(a) * 1.75, 0, Math.sin(a) * 1.75]), [0, 1, 0], [1, 0, 0], [0, 0, 1]);
-    out.push(`<path class="rb-quad" d="${G.circleOf(lug, 0, 0.45, P)}"/>`);
-  }
-  return out.join("");
+  return Array.from({ length: 4 }, (_, i) => {
+    const a = (i * Math.PI) / 2;
+    const F = G.frameOf(add(c, [Math.cos(a) * 1.7, 0, Math.sin(a) * 1.7]), [0, 1, 0], [1, 0, 0], [0, 0, 1]);
+    return `<path class="rb-rivet"${i === lit ? " data-on" : ""} d="${G.circleOf(F, 0, 0.42, P)}"/>`;
+  }).join("");
 }
 
 function drumSvg(phase) {
@@ -313,18 +308,6 @@ function needlePath(level) {
   const dir = add(mul([1, 0, 0], Math.sin(a)), mul(D.vu.along, Math.cos(a)));
   const lift = mul(D.vu.normal, 0.15);
   return line([add(add(c, lift), mul(dir, -1.2)), add(add(c, lift), mul(dir, 7.9))]);
-}
-
-function radarSvg(extend, angle, open) {
-  if (open < 0.02) return "";
-  const tip = [0, 0, D.mast.to + extend];
-  const dir = [Math.cos(angle), Math.sin(angle), 0];
-  const F = G.frameAlong(add(tip, [0, 0, 0.6]), dir);
-  const r = 3 * open;
-  const dish = [[-0.6, 0.6], [-0.2, r * 0.55, 1], [0.3, r * 0.85, 1], [0.6, r]];
-  const bowl = G.solidOf(dish, F, P, { smooth: { rows: 3 } });
-  const feed = line([add(tip, [0, 0, 0.6]), add(add(tip, [0, 0, 0.6]), mul(dir, 2.6 * open))]);
-  return K.solidSvg(bowl, { tone: "hi" }) + `<path class="iso-line" data-tone="hi" d="${feed}"/>` + K.dotsSvg([iso(add(add(tip, [0, 0, 0.6]), mul(dir, 2.6 * open)))], { size: 0.6, tone: "hi" });
 }
 
 // ---------------------------------------------------------------- behaviour: speech, synthesis, the inhibition, the scan
@@ -523,32 +506,36 @@ function behaviour(dt, calm = false) {
       s.text = "cancel · relays D-12,000–18,500 clear";
     } else finish("order cancelled");
   }
+  // The scan: the two rings on his ears sweep fast on crossed axes, the eyes pulse in turn and
+  // the gyros quicken, while the bearing counts round.
   if (act.mode === "scan") {
     const up = t < 5.4 ? 1 : 0;
     s.scan = up;
     act.scanAngle += dt * 1.6;
+    s.orbit = 0.35 + up * 1.4;
+    s.spin = 0.6 + up * 2.2;
+    s.eyes = up ? (Math.floor(t * 3) % 2 ? "L" : "R") : 1;
     const bearing = ((((-act.scanAngle * 180) / Math.PI) % 360) + 360) % 360;
-    if (t < 1.2) s.text = "radar mast up";
+    if (t < 1.2) s.text = "scanners up";
     else if (t < 4) s.text = `scanning · bearing ${fmt(bearing)}°`;
     else if (t < 5.4) s.text = "something approaching · southwest · now quite close";
-    else s.text = "mast stowed";
+    else s.text = "scan stowed";
     if (t > 6.6) finish("scan complete");
   }
   return s;
 }
 
 // ---------------------------------------------------------------- the tour, the loop
+// A short show on first view: he speaks, synthesizes, scans and refuses an order, once. It
+// never takes him apart, and the first click, tap or key ends it for good.
 const TOUR = [
   { at: 0, run: () => start("speak", true) },
-  { at: 5.2, run: () => { setApart(true); select(null); } },
-  ...ORDER.slice(0, 7).map((id, index) => ({ at: 6.2 + index * 1.25, run: () => select(id) })),
-  { at: 15.2, run: () => { select(null); setApart(false); } },
-  { at: 16.8, run: () => { recipeSelect.value = "bourbon"; start("make", true); } },
-  { at: 28.2, run: () => start("scan", true) },
-  { at: 35.4, run: () => start("harm", true) },
-  { at: 43, run: () => {} },
+  { at: 6, run: () => { recipeSelect.value = "bourbon"; start("make", true); } },
+  { at: 17.4, run: () => start("scan", true) },
+  { at: 24.6, run: () => start("harm", true) },
+  { at: 32, run: () => { touring = false; } },
 ];
-const TOUR_LENGTH = 44;
+const TOUR_LENGTH = 33;
 let tourStep = 0;
 function stepTour(dt) {
   const before = tourClock;
@@ -565,13 +552,6 @@ function stepTour(dt) {
 function quietTour() {
   touring = false;
   clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => {
-    if (inside || act.mode !== "idle") return quietTour();
-    touring = !still.matches;
-    tourClock = -0.6;
-    tourStep = 0;
-    run();
-  }, 6000);
 }
 
 const ear = { L: 0, R: 0 };
@@ -582,7 +562,7 @@ let star = 0;
 let quad = 0;
 let needle = { x: 0, v: 0 };
 let doorAngle = { x: 0, v: 0 };
-let mastUp = { x: 0, v: 0 };
+let scanUp = { x: 0, v: 0 };
 let keyPhase = 0;
 
 function settleTo(state, target, dt, seconds, calm) {
@@ -603,34 +583,30 @@ function draw(s, dt, calm) {
   const speed = calm ? 0 : 1;
   spin += dt * s.spin * speed;
   orbit += dt * s.orbit * speed;
-  ear.L += dt * (s.jitter ? 9 : 3.4) * speed;
-  ear.R -= dt * (s.jitter ? 7 : 2.6) * speed;
+  ear.L += dt * (s.jitter ? 9 : 3.4 + scanUp.x * 9) * speed;
+  ear.R -= dt * (s.jitter ? 7 : 2.6 + scanUp.x * 8) * speed;
   drumPhase += dt * s.drum * 2.4 * speed;
-  star = calm ? 0 : Math.sin(clock * 2.2) * 0.35;
-  quad += dt * 1.6 * speed;
+  star += dt * 0.35 * speed;
+  quad = calm ? -1 : Math.floor(clock * (s.drum || s.voice || s.rocker ? 6 : 1.6)) % 4;
   keyPhase += dt * speed;
   settleTo(needle, s.voice, dt, 0.06, calm);
   settleTo(doorAngle, s.door, dt, 0.18, calm);
-  settleTo(mastUp, s.scan, dt, 0.35, calm);
+  settleTo(scanUp, s.scan, dt, 0.35, calm);
 
   html(parts.gyro, gyroSvg(spin, orbit, calm ? 0 : s.arcs));
   html(parts.earL, earSvg(D.ears.L, ear.L));
   html(parts.earR, earSvg(D.ears.R, ear.R));
-  html(parts.varms, vArmsSvg(s.twitch));
   html(parts.door, doorSvg(doorAngle.x));
   html(parts.star, starSvg(star));
   html(parts.quad, quadSvg(quad));
   html(parts.drum, drumSvg(drumPhase));
   write(parts.needle, "d", needlePath(needle.x));
-  const extend = mastUp.x * D.mast.stroke;
-  write(parts.mast, "transform", extend > 0.01 ? K.translateAlong(P, [0, 0, extend]) : null);
-  html(parts.radar, radarSvg(extend, act.scanAngle, smoothstep(0.35, 0.9, mastUp.x)));
   on(parts.pilot, s.pilot > 0.5);
   on(parts.lampL, s.lamps > 0.5);
   on(parts.lampR, s.lamps > 0.5 && !(s.rockerOn % 2));
   const blink = calm ? 1 : clock % 3.4 < 3.25 ? 1 : 0;
-  on(parts.eyeL, s.eyes && blink);
-  on(parts.eyeR, s.eyes && blink);
+  on(parts.eyeL, s.eyes && s.eyes !== "R" && blink);
+  on(parts.eyeR, s.eyes && s.eyes !== "L" && blink);
   on(parts.consoleLamp, s.voice > 0.12);
   parts.tubes.forEach((tube, index) => {
     const pick = s.tubes > 0 && (s.jitter ? Math.sin(clock * 37 + index * 2.1) > 0 : Math.sin(index * 1.7 + Math.floor(clock * 7) * 0.9) > 0.55 - s.tubes * 1.6);
@@ -696,37 +672,21 @@ function pieceAt(event) {
   const item = hit && hit.closest ? hit.closest(".it") : null;
   return item ? item.dataset.piece : null;
 }
-stage.addEventListener("pointermove", (event) => {
-  if (event.pointerType === "touch") return;
-  inside = true;
-  clearTimeout(leaveTimer);
-  quietTour();
-  if (act.mode !== "idle" && act.mode !== "arming") return;
-  if (act.mode === "arming") return;
-  setApart(true);
-  select(pieceAt(event));
-  run();
-});
-stage.addEventListener("pointerleave", () => {
-  inside = false;
-  clearTimeout(leaveTimer);
-  leaveTimer = setTimeout(() => {
-    if (inside) return;
-    select(null);
-    setApart(false);
-  }, 260);
-});
-stage.addEventListener("pointerdown", (event) => {
-  if (event.pointerType !== "touch") return;
+// Nothing moves on hover. A click or tap takes him apart and picks the assembly under it;
+// clicking that assembly again, or the stand or the empty plate, puts him back together.
+stage.addEventListener("click", (event) => {
   quietTour();
   if (act.mode !== "idle") return;
   const id = pieceAt(event);
-  if (!id || (id === "stand" && !apart)) {
-    select(null);
-    setApart(!apart);
-  } else {
+  const part = id && id !== "stand" ? (GROUP[id] ?? id) : null;
+  if (!apart) {
     setApart(true);
-    select(id);
+    select(part);
+  } else if (part && part !== selected) {
+    select(part);
+  } else {
+    select(null);
+    setApart(false);
   }
   run();
 });
@@ -743,28 +703,21 @@ for (const [name, button] of Object.entries(actButtons)) {
     start(name);
   });
 }
+// The parts list works by click too: a part takes him apart and lights that assembly; the
+// same part again puts him back together.
 partButtons.forEach((button) => {
-  const show = () => {
+  button.addEventListener("click", () => {
     if (act.mode !== "idle") return;
     quietTour();
-    clearTimeout(leaveTimer);
-    setApart(true);
-    select(button.dataset.part);
-    run();
-  };
-  const hide = () => {
-    clearTimeout(leaveTimer);
-    leaveTimer = setTimeout(() => {
-      if (inside || partButtons.some((other) => other.matches(":hover, :focus-visible"))) return;
+    if (apart && selected === button.dataset.part) {
       select(null);
       setApart(false);
-    }, 260);
-  };
-  button.addEventListener("pointerenter", show);
-  button.addEventListener("focus", show);
-  button.addEventListener("pointerleave", hide);
-  button.addEventListener("blur", hide);
-  button.addEventListener("click", show);
+    } else {
+      setApart(true);
+      select(button.dataset.part);
+    }
+    run();
+  });
 });
 stage.addEventListener("keydown", (event) => {
   const key = event.key.toLowerCase();
@@ -803,7 +756,7 @@ stage.addEventListener("keydown", (event) => {
 stage.addEventListener("focus", () => announce(apart ? "apart" : "assembled, idle"));
 
 const narrow = matchMedia("(hover: none), (max-width: 480px)");
-const wording = () => hint && (hint.textContent = narrow.matches ? "Tap to take apart" : "Hover to take apart");
+const wording = () => hint && (hint.textContent = narrow.matches ? "Tap to take apart" : "Click to take apart");
 wording();
 narrow.addEventListener("change", wording);
 if (still.matches) touring = false;

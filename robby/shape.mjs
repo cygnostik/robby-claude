@@ -129,25 +129,36 @@ export const CHEST = (() => {
   const p = 2.5;
   return { z0: 108, z1: 150, R, body: barrel({ R, z0: 116, z1: 140, below: reach(R, 30, p, 8), above: reach(R, 27, p, 10), p }) };
 })();
-export const BEARING = { z0: 150, z1: 151, rIn: 22, rOut: 25 };
+export const BEARING = { z0: 150, z1: 151, rIn: 21.2, rOut: 23.4 };
 
-// ---- head: the voice collar, the slanted brim, the bullet head and its clear shell
-// The collar's top and the head's open bottom lie in one plane that rises toward the front:
-// 4.45 in above the chest at the back of the shell and 7.19 in at its front (CAD).
-// The voice collar is a drum wider than the head, and the brim (R10.67 in) wider still.
-export const COLLAR = { r: 24.5, z0: 151 };
-export const SLANT = { back: 161.3, front: 168.3, span: 22 };
-export const slantZ = (y) => SLANT.back + ((y + SLANT.span) * (SLANT.front - SLANT.back)) / (2 * SLANT.span);
-export const SLANT_TILT = Math.atan((SLANT.front - SLANT.back) / (2 * SLANT.span));
+// ---- head: the voice collar, the brim lip, the bullet head and its clear shell
+// The head sits on two planes that meet in a V just behind the sides (the notch in the CAD side
+// view). In front, the brim plane rises steeply, about 28 degrees, from the chest bearing behind
+// the side line to 7.19 in above the chest at the front, so from the front the brim reads as an
+// arch over the voice window. Behind, the hood's lower edge rises to 4.45 in above the chest at
+// the back, over a fluted neck band.
+const unit = (v) => {
+  const l = Math.hypot(...v);
+  return v.map((c) => c / l);
+};
+export const COLLAR = { r: 21, z0: 150 };
+export const SLANT = { o: 155.5, k: 0.545 };
+export const slantZ = (y) => SLANT.o + SLANT.k * y;
+export const SLANT_TILT = Math.atan(SLANT.k);
 export const SLANT_N = [0, -Math.sin(SLANT_TILT), Math.cos(SLANT_TILT)];
-export const SLANT_O = [0, 0, slantZ(0)];
-export const BRIM = { rIn: 21.6, rOut: 26.5, thick: 2 };
+export const SLANT_O = [0, 0, SLANT.o];
+export const REAR = { y0: -7.5, z0: 152.5, k: 0.655 };
+export const rearZ = (y) => REAR.z0 + REAR.k * (REAR.y0 - y);
+export const REAR_N = unit([0, REAR.k, 1]);
+export const REAR_O = [0, REAR.y0, REAR.z0];
+// The brim: a rolled lip on the front plane, 2.2 thick, standing 2.2 cm proud of the head.
+export const BRIM = { rOut: 24.2, rTop: 22.25, thick: 2.2 };
 // The head is a bullet, r = R·(1 − t^3.2)^½ from the back of the collar plane to the apex
 // (CAD: about 21 in tall from the back of the brim, 17.34 in across). Above HOOD.top it is
 // all clear plastic; below, the plastic runs down the front only, between the cheeks of a
 // black hood that makes the sides and back and carries the ears and comb fins.
 export const SHELL = { R: 22, wall: 0.4, base: 161, apex: 213.2, top: 212.7, q: 3.2 };
-export const HOOD = { top: 194, window: 50 * (Math.PI / 180) };
+export const HOOD = { top: 192.5, window: 57 * (Math.PI / 180) };
 export const shellRadius = (z) => {
   const t = Math.min(1, Math.max(0, (z - SHELL.base) / (SHELL.apex - SHELL.base)));
   return SHELL.R * Math.sqrt(Math.max(0, 1 - Math.pow(t, SHELL.q)));
@@ -159,7 +170,7 @@ export const shellSlope = (z) => {
 };
 // The black key chassis: a D in plan, flat across the front behind the window. Below
 // HOOD.top its round back is the hood itself; above, it stands inside the clear cap.
-export const CHASSIS = { front: 11, top: 198 };
+export const CHASSIS = { front: 11, top: 194 };
 
 // The brass bell under the gyros: an exponential taper from 3.2 to the shaft.
 export const bellAt = (z0) => ({
