@@ -14,30 +14,32 @@ const THEME_CSS = `
 :root[data-theme="light"] .iso{${LIGHT_ISO}}
 `;
 
+// A 1950s palette: cream paper, navy ink, atomic coral, teal and mustard by day; a navy
+// night sky with mint and mustard after dark. Type: a Futura-like geometric (Jost), a
+// sign-painter's script for the name (Yellowtail), and a typewriter mono (Space Mono).
+const DAY = `--pg-bg:#efe6d2;--pg-ink:#14213d;--pg-text:#3a4152;--pg-muted:#77715f;--pg-rule:#d8ccb0;--pg-card:#f8f2e4;
+  --pg-accent:#0f6e6f;--pg-canon:#0f6e6f;--pg-script:#9a6200;--pg-prop:#3a4152;--pg-spec:#c2412b;
+  --pg-chip:#fbf7ee;--pg-quote:#e6dcc4;--pg-coral:#e4572e;--pg-teal:#127475;--pg-mustard:#e3a72f;`;
+const NIGHT = `--pg-bg:#0b1324;--pg-ink:#f3ead6;--pg-text:#c3c7cf;--pg-muted:#8a93a6;--pg-rule:#22304b;--pg-card:#101b31;
+  --pg-accent:#6fd6c0;--pg-canon:#6fd6c0;--pg-script:#f2c14e;--pg-prop:#c3c7cf;--pg-spec:#ff8466;
+  --pg-chip:#13203a;--pg-quote:#17243f;--pg-coral:#ff7a59;--pg-teal:#6fd6c0;--pg-mustard:#f2c14e;color-scheme:dark;`;
 export const PAGE_CSS = `
 :root{
-  --pg-bg:#e9ebec;--pg-ink:#17191c;--pg-text:#3d4248;--pg-muted:#6a7077;--pg-rule:#c9cdd1;--pg-card:#f7f8f8;
-  --pg-accent:#2459c4;--pg-canon:#2459c4;--pg-script:#9a6a07;--pg-prop:#3d4248;--pg-spec:#a33a32;
-  --pg-chip:#ffffff;--pg-quote:#dfe3e6;
-  --pg-display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  ${DAY}
+  --pg-display:"Jost",Futura,"Century Gothic","Avenir Next",sans-serif;
+  --pg-hand:"Yellowtail","Brush Script MT",cursive;
   --pg-serif:"Source Serif 4",Georgia,"Times New Roman",serif;
-  --pg-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
-  --pg-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --pg-mono:"Space Mono",ui-monospace,Menlo,Consolas,monospace;
+  --pg-sans:"Jost",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --pg-bg:#0b0c0d;--pg-ink:#eceef0;--pg-text:#b9bec4;--pg-muted:#7d838a;--pg-rule:#24272b;--pg-card:#131313;
-  --pg-accent:#86b6ff;--pg-canon:#86b6ff;--pg-script:#e3b562;--pg-prop:#c9cdd1;--pg-spec:#ff8a80;
-  --pg-chip:#16181a;--pg-quote:#1b1e21;color-scheme:dark}}
-:root[data-theme="dark"]{
-  --pg-bg:#0b0c0d;--pg-ink:#eceef0;--pg-text:#b9bec4;--pg-muted:#7d838a;--pg-rule:#24272b;--pg-card:#131313;
-  --pg-accent:#86b6ff;--pg-canon:#86b6ff;--pg-script:#e3b562;--pg-prop:#c9cdd1;--pg-spec:#ff8a80;
-  --pg-chip:#16181a;--pg-quote:#1b1e21;color-scheme:dark}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){${NIGHT}}}
+:root[data-theme="dark"]{${NIGHT}}
 body{background:var(--pg-bg);color:var(--pg-text);font:17px/1.6 var(--pg-serif);margin:0}
 .pg{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 72px}
 .pg *{box-sizing:border-box}
 .pg a{color:var(--pg-accent);text-underline-offset:2px}
 .pg h1,.pg h2,.pg h3{color:var(--pg-ink);text-wrap:balance}
-.iso{--anatomy-page:var(--pg-bg)}
+.iso{--anatomy-page:var(--pg-bg);--anatomy-mono:var(--pg-mono);--rb-sans:var(--pg-sans)}
 `;
 
 // Re-key a ".x-light-tokens{...}" block onto the viewer's light theme for the selector given.
@@ -72,7 +74,7 @@ export function pageOf({ theme, css: rawCss, stage, script, pieces, fragment = f
 </div>`;
   const stageHtml = `<div class="rb-stage" tabindex="0" role="slider" aria-label="Robby the Robot. Hover or use the arrow keys to take him apart assembly by assembly. S speaks, M synthesizes the chosen sample, H gives the order to harm a man, R scans, Escape puts him back together." aria-valuemin="0" aria-valuemax="${order.length}" aria-valuenow="0" aria-valuetext="Assembled, idle">${stage.backSvg}${stage.frontSvg}</div>`;
   const figure = `<figure class="iso-figure rb"><div class="iso-plate">${corners}${stageHtml}</div><figcaption class="iso-legend">${controls}<span class="rb-parts">${parts}</span><span class="iso-caption">${DOSSIER.caption}</span></figcaption></figure>`;
-  const fonts = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">`;
+  const fonts = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,400;0,500;0,600;0,700;0,800;1,600;1,800&family=Yellowtail&family=Space+Mono:wght@400;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">`;
   const styles = `<style>${ISO_CSS}${THEME_CSS}${PAGE_CSS}${DOSSIER.css}${css}</style>`;
   const body = `<main class="pg iso">${HEADER}${figure}${DOSSIER.html}</main><script type="module">${script}</script>`;
   const title = "<title>Robby the Robot Anatomy</title>";

@@ -31,9 +31,46 @@
   --rb-in-lo: #454545;
   --rb-in-faint: #262626;
   --rb-button-ring: #ffffff14;
-  --rb-button-hover: #232323;
+  --rb-button-hover: #1a2742;
   --rb-part-ring: #ffffff10;
   --rb-part-hover: #ffffff0a;
+  /* Materials and backdrop, night: navy sky, a teal planet, a cool rim on the black lacquer. */
+  --rb-gm-line: #8a9bb3;
+  --rb-gm-lit: #a9dcff;
+  --rb-chrome-line: #0c0f14;
+  --rb-gloss: #e8f1ff;
+  --rb-gloss-k: 0.8;
+  --rb-plate: radial-gradient(ellipse 90% 70% at 72% 18%, #15284f 0%, #0c1630 52%, #08101f 100%);
+  --rb-star: #f4ead6;
+  --rb-star-o: 0.7;
+  --rb-planet-a: #46ad97;
+  --rb-planet-b: #1f6359;
+  --rb-planet-c: #0f2f2b;
+  --rb-glow: #2f9a84;
+  --rb-glow-o: 0.32;
+  --rb-ring: #f2c14e;
+  --rb-moon: #cfc8b4;
+  --rb-sky-glint: #f4ead6;
+  --rb-cream-0: #0d1424;
+  --rb-cream-1: #10182b;
+  --rb-cream-2: #131c32;
+  --rb-cream-3: #172139;
+  --rb-cream-top: #1d2a46;
+  --rb-cream-paper: #121a2e;
+  --rb-cream-hi: #c9d3e6;
+  --rb-cream-mid: #5f6f8f;
+  --rb-cream-lo: #3a4766;
+  --rb-cream-faint: #263149;
+  --rb-enamel-0: #0b221f;
+  --rb-enamel-1: #0f2b27;
+  --rb-enamel-2: #13342f;
+  --rb-enamel-3: #183e38;
+  --rb-enamel-top: #22564e;
+  --rb-enamel-paper: #143530;
+  --rb-enamel-hi: #8fd6c6;
+  --rb-enamel-mid: #4b8478;
+  --rb-enamel-lo: #2f5d55;
+  --rb-enamel-faint: #224740;
 }
 
 /* Light values; page.mjs applies them under the viewer's light theme. */
@@ -50,32 +87,261 @@
   --rb-eye-off: #cfdae6;
   --rb-cavity: #d8d8d4;
   --rb-key: #f6f1e4;
-  --rb-glass-fill: 0.22;
+  --rb-glass-fill: 0.1;
   --rb-glass-tint: #cfe0f5;
-  --rb-glass-shade: 0.5;
+  --rb-glass-shade: 0.16;
   --rb-led-off: #cfcfcb;
   --rb-ind-off: #d6d6d2;
   --rb-dial: #f4f4f0;
-  --rb-in-paper: #3d3f43;
-  --rb-in-face: #45474b;
-  --rb-in-top: #4b4d51;
-  --rb-in-0: #303236;
-  --rb-in-1: #36383c;
-  --rb-in-2: #3c3e42;
-  --rb-in-3: #424448;
+  --rb-in-paper: #1c1f24;
+  --rb-in-face: #22262c;
+  --rb-in-top: #2a2f36;
+  --rb-in-0: #14171b;
+  --rb-in-1: #181b20;
+  --rb-in-2: #1c2026;
+  --rb-in-3: #21252c;
   --rb-in-hi: #e6e6e3;
-  --rb-in-mid: #a9a9a6;
-  --rb-in-lo: #85858a;
-  --rb-in-faint: #5e6064;
+  --rb-in-mid: #8c919a;
+  --rb-in-lo: #5d636c;
+  --rb-in-faint: #3a3f47;
   --rb-button-ring: #0000001a;
-  --rb-button-hover: #f0f0ed;
+  --rb-button-hover: #f6efdf;
   --rb-part-ring: #00000014;
   --rb-part-hover: #0000000a;
+  /* Materials and backdrop, day: a cream studio sweep, a mint planet with a coral ring. */
+  --rb-gm-line: #07090c;
+  --rb-gm-lit: #3e9bff;
+  --rb-chrome-line: #1d232b;
+  --rb-gloss: #ffffff;
+  --rb-gloss-k: 1;
+  --rb-plate: linear-gradient(180deg, #fcf8ee 0%, #f6efdf 58%, #efe4cc 100%);
+  --rb-star: #14213d;
+  --rb-star-o: 0;
+  --rb-planet-a: #e2f4ec;
+  --rb-planet-b: #b4dfd2;
+  --rb-planet-c: #86c4b4;
+  --rb-glow: #cdeee3;
+  --rb-glow-o: 0.55;
+  --rb-ring: #e4572e;
+  --rb-moon: #e6d9bb;
+  --rb-sky-glint: #e3a72f;
+  --rb-cream-0: #d9cdb1;
+  --rb-cream-1: #e3d9c2;
+  --rb-cream-2: #ece3d0;
+  --rb-cream-3: #f3ecdd;
+  --rb-cream-top: #fbf7ee;
+  --rb-cream-paper: #f2eadb;
+  --rb-cream-hi: #2e2a24;
+  --rb-cream-mid: #988d79;
+  --rb-cream-lo: #bdb29d;
+  --rb-cream-faint: #d8cebb;
+  --rb-enamel-0: #8fbcb1;
+  --rb-enamel-1: #a8cfc5;
+  --rb-enamel-2: #bfded6;
+  --rb-enamel-3: #d4ebe5;
+  --rb-enamel-top: #eef8f4;
+  --rb-enamel-paper: #cfe6df;
+  --rb-enamel-hi: #1f3d37;
+  --rb-enamel-mid: #5e8c82;
+  --rb-enamel-lo: #86b0a6;
+  --rb-enamel-faint: #a9cbc2;
+}
+
+/* ---- Materials. Each sets the kit's tone tokens on an item; the selection rules further
+   down still win, so a chosen assembly lights up whatever it is made of. */
+.it.rb-m-gunmetal {
+  --anatomy-paper: #1a1f27;
+  --anatomy-face: #222833;
+  --anatomy-top: #2c333f;
+  --anatomy-shade-0: #0b0e13;
+  --anatomy-shade-1: #10141a;
+  --anatomy-shade-2: #161b23;
+  --anatomy-shade-3: #1e242e;
+  --anatomy-lit-top: #4a5568;
+  --anatomy-lit-shade: #2c3442;
+  --anatomy-hi: var(--rb-gm-line);
+  --anatomy-mid: #5d687a;
+  --anatomy-lo: #414a5a;
+  --anatomy-faint: #2d3440;
+  --anatomy-lit: var(--rb-gm-lit);
+  --anatomy-dot: #a7b3c6;
+}
+.it.rb-m-rubber {
+  --anatomy-paper: #2b3038;
+  --anatomy-face: #343a44;
+  --anatomy-top: #4f5865;
+  --anatomy-shade-0: #1a1e24;
+  --anatomy-shade-1: #232831;
+  --anatomy-shade-2: #2d333c;
+  --anatomy-shade-3: #3a414c;
+  --anatomy-lit-top: #5d6878;
+  --anatomy-lit-shade: #3f4753;
+  --anatomy-hi: var(--rb-gm-line);
+  --anatomy-mid: #6b7586;
+  --anatomy-lo: #4d5564;
+  --anatomy-faint: #3a414c;
+  --anatomy-lit: var(--rb-gm-lit);
+  --anatomy-dot: #a7b3c6;
+}
+.rb-m-rubber .rb-gloss {
+  opacity: 0.12;
+}
+.rb-m-rubber .rb-gloss[data-g="halo"] {
+  opacity: 0.04;
+}
+.it.rb-m-chrome {
+  --anatomy-paper: #c5ccd5;
+  --anatomy-face: #e1e6ec;
+  --anatomy-top: #ffffff;
+  --anatomy-shade-0: #56606c;
+  --anatomy-shade-1: #8e98a4;
+  --anatomy-shade-2: #c6ced7;
+  --anatomy-shade-3: #e9eef3;
+  --anatomy-lit-top: #ffffff;
+  --anatomy-lit-shade: #dfe8f2;
+  --anatomy-hi: var(--rb-chrome-line);
+  --anatomy-mid: #5d6672;
+  --anatomy-lo: #87909c;
+  --anatomy-faint: #b2bac4;
+  --anatomy-lit: var(--rb-gm-lit);
+  --anatomy-dot: #2f353d;
+}
+.it.rb-m-brass {
+  --anatomy-paper: #b88a35;
+  --anatomy-face: #d3a64c;
+  --anatomy-top: #f6dc98;
+  --anatomy-shade-0: #6b4914;
+  --anatomy-shade-1: #966a21;
+  --anatomy-shade-2: #c2953b;
+  --anatomy-shade-3: #dfba62;
+  --anatomy-lit-top: #fff0c0;
+  --anatomy-lit-shade: #e6c47a;
+  --anatomy-hi: #2f2006;
+  --anatomy-mid: #7a5920;
+  --anatomy-lo: #9e7a37;
+  --anatomy-faint: #c6a25d;
+  --anatomy-dot: #3e2c0c;
+}
+.it.rb-m-cream {
+  --anatomy-paper: var(--rb-cream-paper);
+  --anatomy-face: var(--rb-cream-top);
+  --anatomy-top: var(--rb-cream-top);
+  --anatomy-shade-0: var(--rb-cream-0);
+  --anatomy-shade-1: var(--rb-cream-1);
+  --anatomy-shade-2: var(--rb-cream-2);
+  --anatomy-shade-3: var(--rb-cream-3);
+  --anatomy-lit-top: var(--rb-cream-top);
+  --anatomy-lit-shade: var(--rb-cream-3);
+  --anatomy-hi: var(--rb-cream-hi);
+  --anatomy-mid: var(--rb-cream-mid);
+  --anatomy-lo: var(--rb-cream-lo);
+  --anatomy-faint: var(--rb-cream-faint);
+  --anatomy-dot: var(--rb-cream-hi);
+}
+.it.rb-m-enamel {
+  --anatomy-paper: var(--rb-enamel-paper);
+  --anatomy-face: var(--rb-enamel-top);
+  --anatomy-top: var(--rb-enamel-top);
+  --anatomy-shade-0: var(--rb-enamel-0);
+  --anatomy-shade-1: var(--rb-enamel-1);
+  --anatomy-shade-2: var(--rb-enamel-2);
+  --anatomy-shade-3: var(--rb-enamel-3);
+  --anatomy-lit-top: var(--rb-enamel-top);
+  --anatomy-lit-shade: var(--rb-enamel-3);
+  --anatomy-hi: var(--rb-enamel-hi);
+  --anatomy-mid: var(--rb-enamel-mid);
+  --anatomy-lo: var(--rb-enamel-lo);
+  --anatomy-faint: var(--rb-enamel-faint);
+  --anatomy-dot: var(--rb-enamel-hi);
+}
+
+/* ---- Gloss: layered fills, softest outside, so no filters are needed while parts move. */
+.rb-gloss {
+  fill: var(--rb-gloss);
+  stroke: none;
+  pointer-events: none;
+}
+.rb-gloss[data-g="halo"] {
+  opacity: calc(0.07 * var(--rb-gloss-k));
+}
+.rb-gloss[data-g="streak"] {
+  opacity: calc(0.26 * var(--rb-gloss-k));
+}
+.rb-gloss[data-g="spot"] {
+  opacity: calc(0.8 * var(--rb-gloss-k));
+}
+.rb-m-chrome .rb-gloss,
+.rb-m-brass .rb-gloss {
+  opacity: 0.9;
+}
+.rb-m-chrome .rb-gloss[data-g="halo"],
+.rb-m-brass .rb-gloss[data-g="halo"] {
+  opacity: 0.25;
+}
+.rb-gloss[data-glass][data-g="halo"] {
+  opacity: 0.16;
+}
+.rb-gloss[data-glass][data-g="streak"] {
+  opacity: 0.5;
+}
+.rb-gloss[data-glass][data-g="spot"] {
+  opacity: 0.6;
+}
+.rb-sparkle {
+  fill: #ffffff;
+  stroke: none;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2.5px #ffffffcc);
+}
+
+/* ---- The plate and its backdrop. */
+.rb .iso-plate {
+  background: var(--rb-plate);
+}
+.rb-stars circle {
+  fill: var(--rb-star);
+  opacity: var(--rb-star-o);
+}
+.rb-planet-a {
+  stop-color: var(--rb-planet-a);
+}
+.rb-planet-b {
+  stop-color: var(--rb-planet-b);
+}
+.rb-planet-c {
+  stop-color: var(--rb-planet-c);
+}
+.rb-glow-a {
+  stop-color: var(--rb-glow);
+  stop-opacity: var(--rb-glow-o);
+}
+.rb-glow-b {
+  stop-color: var(--rb-glow);
+  stop-opacity: 0;
+}
+.rb-ring ellipse {
+  fill: none;
+  stroke: var(--rb-ring);
+  stroke-width: 3;
+  opacity: 0.55;
+}
+.rb-ring-front {
+  fill: var(--rb-ring);
+  opacity: 0.55;
+}
+.rb-moon {
+  fill: var(--rb-moon);
+  opacity: 0.85;
+}
+.rb-sky-glint {
+  fill: var(--rb-sky-glint);
+  opacity: 0.75;
 }
 
 .rb .iso-plate {
   padding: 52px 24px 64px;
   overflow: hidden;
+  border-radius: 14px;
 }
 
 .rb-stage {

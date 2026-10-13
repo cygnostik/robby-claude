@@ -9,7 +9,7 @@ const q = (text) => `<q>${text}</q>`;
 export const HEADER = `
 <header class="pg-head">
   <p class="pg-eyebrow">Anatomy · <i>Forbidden Planet</i>, MGM 1956</p>
-  <h1>Robby the Robot</h1>
+  <h1 class="pg-title"><span class="pg-title-name">Robby</span> <span class="pg-title-hand">the Robot</span></h1>
   <p class="pg-dek">How the machine works, twice over. MGM built him in 1955 as a three-piece suit with a stuntman inside and a cable running out of his heel. On screen he is Dr. Morbius's servant on Altair IV, with a chemical laboratory in his belly and an inhibition that no order can override. This page draws both, and tags every claim by where it comes from.</p>
   <dl class="pg-stats">
     <div><dt>Height</dt><dd>214<small> cm</small></dd><span>just over 7 ft${cite(3)}</span></div>
@@ -80,13 +80,13 @@ const systems = [
   },
   {
     n: "06",
-    title: "Arms and claws",
+    title: "Arms and hands",
     rows: [
-      ["prop", `MGM's sheet calls each shoulder a ${q("flexible sleeve & ball socket")}, draws the ${q("arm in locked position")}, and specifies a ${q("tool adaptor & tools")}${cite(16)}. On the CAD drawing the sockets sit in drums of radius 6.50 in at the barrel's front corners${cite(15)}.`],
+      ["prop", `MGM's sheet calls each shoulder a ${q("flexible sleeve & ball socket")}, draws the ${q("arm in locked position")}, and specifies a ${q("tool adaptor & tools")}${cite(16)}. On the CAD drawing the sockets sit in round shoulder pods of radius 6.50 in at the barrel's front corners${cite(15)}. Each pod swells out of a ribbed collar, and the arm comes out of a ball in its face: three rubber rings stepping down from the shoulder, a big wrist bulb with a flange round its widest point, the tool adaptor, and a rubber hand, two flat, jointed fingers side by side over a thumb. In studio stills and on the poster the arms reach forward, as they do here${cite(15, 17)}.`],
       ["prop", `Thick, stubby arms on plastic ball joints with limited rotation. They can extend under an expanding concertina sheath of rubber, and end in three-fingered rubber hands painted gunmetal grey${cite(3)}. The Bonhams lot included alternate claw hands${cite(4)}.`],
       ["film", `${q("Tremendously strong, of course. He could quite easily topple this house off its foundation.")} He carries ten tons of isotope 217 on his vehicle, and the wounded Doc is the only person he ever carries${cite(1, 3)}.`],
       ["script", `Morbius asks for a Stillson wrench, and Robby detaches his own left hand and fits the wrench in its place. Spare parts, one of them a metal hand, ride clipped to his body${cite(2)}.`],
-      ["spec", `Swappable tools imply a standard wrist coupling, which MGM's tool adaptor makes explicit; it is drawn here as the collar between sleeve and palm. The arms leave their sockets along the drum's axis when the figure comes apart.`],
+      ["spec", `Swappable tools imply a standard wrist coupling, which MGM's tool adaptor makes explicit; it is drawn here as the collar between sleeve and palm. The arms leave their sockets along the pod's axis when the figure comes apart.`],
     ],
   },
   {
@@ -215,14 +215,18 @@ export const DOSSIER = {
 .rb-visually{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .pg-head{display:grid;gap:18px;margin-block:12px 28px}
 .pg-eyebrow{margin:0;font:500 12px/1.4 var(--pg-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--pg-muted)}
-.pg-head h1{margin:0;font:800 clamp(56px,11vw,128px)/.86 var(--pg-display);letter-spacing:.01em;text-transform:uppercase}
+.pg-title{position:relative;margin:0 0 22px;padding-block:.06em .1em;line-height:.8;isolation:isolate}
+.pg-title::before{content:"";position:absolute;z-index:-1;left:-.12em;top:.1em;width:min(5.6em,92%);height:.8em;border:2px solid var(--pg-coral);border-radius:50%;transform:rotate(-9deg);opacity:.5;font-size:clamp(64px,13vw,156px)}
+.pg-title::after{content:"";position:absolute;z-index:-1;left:min(5.05em,84%);top:.16em;width:.1em;height:.1em;border-radius:50%;background:var(--pg-coral);font-size:clamp(64px,13vw,156px)}
+.pg-title-name{display:inline-block;font:800 italic clamp(64px,13vw,156px)/.86 var(--pg-display);letter-spacing:-.01em;text-transform:uppercase;color:var(--pg-ink)}
+.pg-title-hand{display:inline-block;margin-left:-.1em;font:400 clamp(38px,6.6vw,80px)/1 var(--pg-hand);color:var(--pg-coral);transform:rotate(-7deg) translateY(.12em);text-transform:none;letter-spacing:0}
 .pg-dek{margin:0;max-width:62ch;font-size:clamp(17px,2.1vw,20px);line-height:1.55;color:var(--pg-text)}
 .pg-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;margin:6px 0 0;background:var(--pg-rule);border:1px solid var(--pg-rule)}
 .pg-stats>div{display:grid;gap:2px;align-content:start;padding:12px 14px;background:var(--pg-bg);min-width:0}
 .pg-stats dt{font:500 10.5px/1.3 var(--pg-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--pg-muted)}
-.pg-stats dd{margin:0;font:600 34px/1 var(--pg-display);color:var(--pg-ink);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.pg-stats dd{margin:0;font:700 clamp(24px,2.6vw,30px)/1 var(--pg-display);color:var(--pg-ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em;white-space:nowrap}
 .pg-stats dd small{font-size:.5em;margin-left:1px;letter-spacing:.04em}
-.pg-stats span{font:13px/1.4 var(--pg-sans);color:var(--pg-muted)}
+.pg-stats span{font:13.5px/1.4 var(--pg-sans);color:var(--pg-muted)}
 .pg-key{display:flex;flex-wrap:wrap;gap:8px 20px;margin:0;padding:0;list-style:none;font:13.5px/1.4 var(--pg-sans);color:var(--pg-muted)}
 .pg-key li{display:inline-flex;align-items:center;gap:8px}
 .tag{display:inline-block;padding:2px 7px 1px;border-radius:3px;font:500 10px/1.5 var(--pg-mono);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;vertical-align:1px;border:1px solid currentColor}
@@ -234,21 +238,22 @@ export const DOSSIER = {
 .cite a{text-decoration:none}
 .pg q{quotes:"\\201C" "\\201D";font-style:italic}
 .pg-sec{margin-top:56px}
-.pg-sec>h2{display:flex;align-items:baseline;gap:14px;margin:0 0 6px;font:800 clamp(32px,5vw,48px)/1 var(--pg-display);text-transform:uppercase;letter-spacing:.01em}
+.pg-sec>h2{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin:0 0 6px;font:800 italic clamp(30px,4.6vw,46px)/1 var(--pg-display);text-transform:uppercase;letter-spacing:-.005em}
+.pg-sec>h2::before{content:"✦";align-self:center;font:400 .5em/1 var(--pg-sans);color:var(--pg-coral);font-style:normal}
 .pg-sec>h2 small{font:500 11px/1 var(--pg-mono);letter-spacing:.12em;color:var(--pg-muted)}
 .pg-sec>p.lede{margin:0 0 22px;max-width:66ch}
 .sys-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:1px;background:var(--pg-rule);border:1px solid var(--pg-rule)}
 .sys{background:var(--pg-bg);padding:20px 22px 22px;min-width:0}
 .sys:last-child:nth-child(odd){grid-column:1/-1}
 .sys:last-child:nth-child(odd) .claim{max-width:78ch}
-.sys h3{display:flex;align-items:baseline;gap:12px;margin:0 0 10px;font:600 26px/1.05 var(--pg-display);text-transform:uppercase;letter-spacing:.015em}
+.sys h3{display:flex;align-items:baseline;gap:12px;margin:0 0 10px;font:700 22px/1.1 var(--pg-display);text-transform:uppercase;letter-spacing:.02em}
 .sys-n{font:500 12px/1 var(--pg-mono);color:var(--pg-muted);letter-spacing:.06em}
 .claim{margin:0 0 10px;font-size:15.5px;line-height:1.58}
 .claim:last-child{margin-bottom:0}
 .claim[data-src="spec"]{padding-left:12px;border-left:1px dashed var(--pg-spec)}
 .rule{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:0;padding:0;list-style:none;counter-reset:step}
 .rule li{position:relative;padding:14px 16px 16px;background:var(--pg-card);border:1px solid var(--pg-rule);min-width:0}
-.rule li b{display:block;margin-bottom:6px;font:600 22px/1 var(--pg-display);text-transform:uppercase;letter-spacing:.02em;color:var(--pg-ink)}
+.rule li b{display:block;margin-bottom:6px;font:800 italic 21px/1 var(--pg-display);text-transform:uppercase;letter-spacing:.02em;color:var(--pg-ink)}
 .rule li p{margin:0;font-size:15px;line-height:1.5}
 .rule li[data-lock] b{color:var(--pg-spec)}
 .pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px;margin-top:16px}
@@ -266,11 +271,11 @@ export const DOSSIER = {
 .num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .timeline{margin:0;padding:0;list-style:none;border-left:1px solid var(--pg-rule)}
 .timeline li{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;padding:12px 0 12px 18px;position:relative}
-.timeline li::before{content:"";position:absolute;left:-4px;top:19px;width:7px;height:7px;border-radius:50%;background:var(--pg-bg);border:1px solid var(--pg-muted)}
+.timeline li::before{content:"";position:absolute;left:-4px;top:19px;width:7px;height:7px;border-radius:50%;background:var(--pg-bg);border:1.5px solid var(--pg-coral)}
 .timeline time{font:500 13px/1.6 var(--pg-mono);color:var(--pg-ink);font-variant-numeric:tabular-nums}
 .timeline p{margin:0;font-size:15.5px}
 .spec-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px}
-.spec-cols h3{margin:0 0 10px;font:600 22px/1 var(--pg-display);text-transform:uppercase;letter-spacing:.02em}
+.spec-cols h3{margin:0 0 10px;font:700 20px/1 var(--pg-display);text-transform:uppercase;letter-spacing:.03em}
 .sources{margin:0;padding-left:22px;font:14px/1.5 var(--pg-sans);columns:2 340px;column-gap:32px}
 .sources li{margin-bottom:6px;break-inside:avoid;overflow-wrap:anywhere}
 .notes{font-size:15px;max-width:70ch}
@@ -335,7 +340,7 @@ export const DOSSIER = {
 
 <section class="pg-sec" id="method">
   <h2>How the figure was made</h2>
-  <p class="notes">Proportions come from ArthMat's dimensioned CAD drawing, in inches, scaled to Wikipedia's 214 cm${cite(15, 3)}. Part names come from MGM's construction sheet${cite(16)}. Photographs of replicas and renders of the clear shell settled what the drawings leave open, chiefly where the clear plastic stops. It covers the cap of the bullet head and runs down the front as a window. A black hood makes the cheeks and back, carries the ears and comb fins, and shows through the window as a dark recess behind the keys${cite(17)}. The console follows Bonhams' dimensions. Every turned body (shoes, globes, pelvis, barrel, collar, brim, head) is an analytic profile, and every part records its true shape, so a geometry audit can check that nothing passes through anything at rest, apart, or at any moment in between. The laboratory core and the readings marked Speculative are ours. Drawn with the Anatomy skill's kit.${cite(14)}</p>
+  <p class="notes">Proportions come from ArthMat's dimensioned CAD drawing, in inches, scaled to Wikipedia's 214 cm${cite(15, 3)}. Part names come from MGM's construction sheet${cite(16)}. Photographs of replicas and renders of the clear shell settled what the drawings leave open, chiefly where the clear plastic stops. It covers the cap of the bullet head and runs down the front as a window. A black hood makes the cheeks and back, carries the ears and comb fins, and shows through the window as a dark recess behind the keys${cite(17)}. Materials and light follow 1950s publicity stills rather than a technical plate: black lacquer with an airbrushed highlight down every curve, chrome trim, a brass bell under the gyros, and a glint on the clear plastic. The console follows Bonhams' dimensions. Every turned body (shoes, globes, pelvis, barrel, shoulder pods, forearm rings, collar, brim, head) is an analytic profile, and every part records its true shape, so a geometry audit can check that nothing passes through anything at rest, apart, or at any moment in between. The laboratory core and the readings marked Speculative are ours. Drawn with the Anatomy skill's kit.${cite(14)}</p>
 </section>
 
 <section class="pg-sec" id="sources">

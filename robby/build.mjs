@@ -41,8 +41,8 @@ const PIECES = {
   dome: { name: "Clear shell and radar mast", say: "clear shell · Plexiglas cap and front window · 3 weeks in the model shop", move: [0, 0, 88] },
   head: { name: "Head: hood, voice tubes, keys and ears", say: "head · black hood · voice tubes · 6 relay keys · 2 rotating rings", move: [0, 0, 56] },
   brain: { name: "Gyro tower and pilot lamp", say: "gyro tower · 3 wire gyros in planetary orbit", move: null },
-  armR: { name: "Arms and claws", say: "arm · flexible sleeve & ball socket · 3-finger claw", move: [20, 20, 30] },
-  armL: { name: "Left arm and claw", say: "arm · flexible sleeve & ball socket · 3-finger claw", move: [-20, 20, 30] },
+  armR: { name: "Arms and hands", say: "arm · ball socket · rubber rings · flanged wrist bulb · 3-finger rubber hand", move: [17.3, 13.6, 38] },
+  armL: { name: "Left arm and hand", say: "arm · ball socket · rubber rings · flanged wrist bulb · 3-finger rubber hand", move: [-17.3, 13.6, 38] },
   chest: { name: "Chest barrel and indicator panel", say: "chest · analyzing hopper · star · quad light · 4 keys", move: [0, 0, 38] },
   core: { name: "Laboratory core (speculative)", say: "lab core · analyzer drum · relays D-12,000–18,500", move: [0, 0, 0] },
   pelvis: { name: "Pelvis and hip hinges", say: "pelvis · hinged at the hips · hides the operator's knees", move: [0, 0, 0] },
@@ -81,6 +81,84 @@ const FADE = [0.04, 0.42];
 const Fz = (x = 0, y = 0) => G.frameOf([x, y, 0], [0, 0, 1], [1, 0, 0], [0, 1, 0]);
 const path = (points, closed = false) => k.pathOf(points.map(at), closed);
 
+// ---------------------------------------------------------------- gloss
+// Robby is lacquered plastic: every curved body carries the airbrushed highlight of a 1950s
+// publicity still. The highlight follows the drawing's own light: a streak down the meridian
+// that faces the half-vector between light and eye, widest where it faces it most, and a
+// spot where it faces it squarely. Closed fills only, so they are not texture lines.
+const HV = G.unit3(G.add3(G.lightOf(P), V));
+function glossOn(F, radius, slope, s0, s1, { width = 0.14, rows = 36, floor = 0.3, spot = true, spotTol = 0.02, kind = "" } = {}) {
+  const local = (w) => [G.dot3(w, F.u), G.dot3(w, F.v), G.dot3(w, F.a)];
+  const [hu, hv, ha] = local(HV);
+  const [vu, vv, va] = local(V);
+  const phi = Math.atan2(hv, hu);
+  const facing = (s, a, x, y, z) => {
+    const k = slope(s);
+    return (x * Math.cos(a) + y * Math.sin(a) - z * k) / Math.sqrt(1 + k * k);
+  };
+  const point = (s, a) => at(G.add3(G.add3(F.o, G.mul3(F.a, s)), G.add3(G.mul3(F.u, radius(s) * Math.cos(a)), G.mul3(F.v, radius(s) * Math.sin(a)))));
+  const rowsOf = [];
+  for (let i = 0; i <= rows; i++) {
+    const s = s0 + ((s1 - s0) * (i + 0.5)) / (rows + 1);
+    if (radius(s) < 0.3) continue;
+    rowsOf.push({ s, m: facing(s, phi, hu, hv, ha), seen: facing(s, phi, vu, vv, va) });
+  }
+  let best = [];
+  let run = [];
+  for (const row of rowsOf) {
+    if (row.m > floor && row.seen > 0.12) run.push(row);
+    else run = [];
+    if (run.length > best.length) best = [...run];
+  }
+  if (best.length < 3) return "";
+  const band = (scale) => {
+    const left = [];
+    const right = [];
+    for (const row of best) {
+      let w = width * scale * Math.pow((row.m - floor) / (1 - floor), 0.8);
+      while (w > 0.01 && (facing(row.s, phi - w, vu, vv, va) < 0.05 || facing(row.s, phi + w, vu, vv, va) < 0.05)) w *= 0.7;
+      left.push(point(row.s, phi - w));
+      right.push(point(row.s, phi + w));
+    }
+    return k.pathOf([...left, ...right.reverse()], true);
+  };
+  let out = `<path class="rb-gloss" data-g="halo"${kind} d="${band(2.8)}"/><path class="rb-gloss" data-g="streak"${kind} d="${band(1)}"/>`;
+  if (spot) {
+    const peak = Math.max(...best.map((row) => row.m));
+    const near = [];
+    for (const row of best) {
+      if (row.m < peak - spotTol) continue;
+      for (let j = -24; j <= 24; j++) {
+        const a = phi + (j / 24) * 0.5;
+        if (facing(row.s, a, hu, hv, ha) > peak - spotTol) near.push(point(row.s, a));
+      }
+    }
+    if (near.length > 2) out += `<path class="rb-gloss" data-g="spot"${kind} d="${k.pathOf(G.hullOf(near), true)}"/>`;
+  }
+  return out;
+}
+// The highlight on a ball: a soft disc where the surface faces the half-vector.
+function glossBall(centre, r) {
+  const e1 = G.unit3(G.cross3(HV, Math.abs(HV[2]) > 0.9 ? [1, 0, 0] : [0, 0, 1]));
+  const e2 = G.cross3(HV, e1);
+  const cap = (angle) => {
+    const pts = [];
+    for (let j = 0; j < 20; j++) {
+      const t = (j / 20) * Math.PI * 2;
+      const n = G.add3(G.mul3(HV, Math.cos(angle)), G.mul3(G.add3(G.mul3(e1, Math.cos(t)), G.mul3(e2, Math.sin(t))), Math.sin(angle)));
+      pts.push(at(G.add3(centre, G.mul3(n, r))));
+    }
+    return k.pathOf(pts, true);
+  };
+  return `<path class="rb-gloss" data-g="halo" d="${cap(0.62)}"/><path class="rb-gloss" data-g="spot" d="${cap(0.22)}"/>`;
+}
+// A four-point glint, as airbrushed on chrome and glass.
+function sparkle([x, y], size, className = "rb-sparkle") {
+  const thin = size * 0.13;
+  const pts = [[x, y - size], [x + thin, y - thin], [x + size * 0.62, y], [x + thin, y + thin], [x, y + size], [x - thin, y + thin], [x - size * 0.62, y], [x - thin, y - thin]];
+  return `<path class="${className}" d="${k.pathOf(pts, true)}"/>`;
+}
+
 // ---------------------------------------------------------------- recorder
 const R = A.recorder(P, { order: STAGGER, spring: SPRING });
 const { items, nameFor } = R;
@@ -100,9 +178,12 @@ function tubeItems(piece, route, r, { name, tone = "hi", bias = 0, maxLength = 1
 }
 
 // A body of revolution about a vertical axis through (x, y), from an analytic profile.
-function bodyZ(piece, x, y, body, z0, z1, { tone = "hi", seams = [], extra = "", bias = 0, name, count = 28, rims, hollow = 0 } = {}) {
+function bodyZ(piece, x, y, body, z0, z1, options = {}) {
+  return bodyOn(piece, Fz(x, y), body, z0, z1, options);
+}
+// The same about any axis: F.a is the axis, s runs along it.
+function bodyOn(piece, F, body, z0, z1, { tone = "hi", seams = [], extra = "", bias = 0, name, count = 28, rims, hollow = 0, cut, owner, gloss } = {}) {
   const extraShapes = [];
-  const F = Fz(x, y);
   const profile = S.sampled(body, z0, z1, count);
   const paths = G.solidOf(profile, F, P, { smooth: { slope: body.slope, radius: body.radius }, ...(rims ? { rims } : {}) });
   const inner = seams.map((z) => G.arcOf(F, z, body.radius(z), P, { slope: body.slope(z) })).join("");
@@ -115,16 +196,18 @@ function bodyZ(piece, x, y, body, z0, z1, { tone = "hi", seams = [], extra = "",
     if (hollow.floor) extraShapes.push(record(A.ring(F, z0, z0 + hollow.floor[2], hollow.floor[0], hollow.floor[1], { name: id, owner: id })));
     if (hollow.roof) extraShapes.push(record(A.disc(F, z1 - hollow.roof, z1, body.radius(z1), { name: id, owner: id })));
   } else {
-    shape = record(A.solid(F, profile, { radius: body.radius, name: id }));
+    shape = record(A.solid(F, profile, { radius: body.radius, name: id, owner, ...(cut ? { cut, seated: true } : {}) }));
   }
-  put(piece, [x, y, (z0 + z1) / 2], Sv(paths, { tone, inner: inner ? Ln(inner, { tone: "faint" }) : "" }) + extra, { bias, name: id, shapes: [shape, ...extraShapes] });
+  const shine = piece === "stand" || gloss === false ? "" : glossOn(F, body.radius, body.slope, z0, z1, gloss || {});
+  put(piece, G.add3(F.o, G.mul3(F.a, (z0 + z1) / 2)), Sv(paths, { tone, inner: inner ? Ln(inner, { tone: "faint" }) : "" }) + shine + extra, { bias, name: id, shapes: [shape, ...extraShapes] });
   return shape;
 }
 
 function discOn(piece, F, s0, s1, r, { tone = "hi", extra = "", inner = "", bias = 0, name, lit = false, cut, seated, owner } = {}) {
   const id = nameFor(name ?? `${piece}.disc`);
   const shape = record(A.disc(F, s0, s1, r, { name: id, owner, ...(cut ? { cut, seated: seated ?? true } : {}) }));
-  put(piece, G.add3(F.o, G.mul3(F.a, (s0 + s1) / 2)), Sv(G.disc(s0, s1, r, F, P), { tone, lit, inner }) + extra, { bias, name: id, shapes: [shape] });
+  const shine = piece !== "stand" && s1 - s0 > 2.5 && r > 1 ? glossOn(F, () => r, () => 0, s0, s1, { spot: false, rows: 12 }) : "";
+  put(piece, G.add3(F.o, G.mul3(F.a, (s0 + s1) / 2)), Sv(G.disc(s0, s1, r, F, P), { tone, lit, inner }) + shine + extra, { bias, name: id, shapes: [shape] });
   return shape;
 }
 
@@ -141,7 +224,7 @@ function turnedOn(piece, F, profile, { tone = "hi", extra = "", inner = "", bias
 function ballAt(piece, centre, r, { tone = "hi", bias = 0, name, owner, extra = "" } = {}) {
   const id = nameFor(name ?? `${piece}.ball`);
   const shape = record(A.ball(centre, r, { name: id, owner }));
-  put(piece, centre, Sv(G.sphereOf(centre, r, P), { tone }) + extra, { bias, name: id, shapes: [shape] });
+  put(piece, centre, Sv(G.sphereOf(centre, r, P), { tone }) + (piece === "stand" ? "" : glossBall(centre, r)) + extra, { bias, name: id, shapes: [shape] });
   return shape;
 }
 
@@ -280,7 +363,8 @@ for (const side of [-1, 1]) {
   const clip = k.pathOf(G.hullOf(upper), true);
   const shoeId = `legs.shoe${tag}`;
   const shoe = record(A.solid(F, profile, { radius: S.SHOE.radius, name: shoeId, cut: [beyond([0, 0, S.SHOE.axisZ], [0, 0, 1])] }));
-  put("legs", [x, S.SHOE.mid, 6], `<clipPath id="rb-shoe${tag}"><path d="${clip}"/></clipPath><g clip-path="url(#rb-shoe${tag})">${Sv(paths, { tone: "hi" })}</g>`, { name: shoeId, shapes: [shoe] });
+  const shine = glossOn(F, S.SHOE.radius, S.SHOE.slope, S.SHOE.s0 + 0.5, S.SHOE.s1 - 0.5, { width: 0.12 });
+  put("legs", [x, S.SHOE.mid, 6], `<clipPath id="rb-shoe${tag}"><path d="${clip}"/></clipPath><g clip-path="url(#rb-shoe${tag})">${Sv(paths, { tone: "hi" })}${shine}</g>`, { name: shoeId, shapes: [shoe] });
   LEG_SHAPES[side] = { shoe, F };
   // An ankle pad shaped to the shoe's back, carrying the bottom globe.
   const a = S.NECK.r;
@@ -301,7 +385,7 @@ for (const side of [-1, 1]) {
 
 // ---------------------------------------------------------------- pelvis and hip hinges
 const HIP_Z = 96;
-const pelvis = bodyZ("pelvis", 0, 0, S.PELVIS.body, S.PELVIS.z0, S.PELVIS.z1, { seams: [HIP_Z, 104], name: "pelvis.body", count: 30 });
+const pelvis = bodyZ("pelvis", 0, 0, S.PELVIS.body, S.PELVIS.z0, S.PELVIS.z1, { seams: [HIP_Z, 104], name: "pelvis.body", count: 30, gloss: { spotTol: 0.006, width: 0.11 } });
 for (const side of [-1, 1]) {
   const F = G.frameOf([0, 0, HIP_Z], [side, 0, 0], [0, 1, 0], [0, 0, 1]);
   const a = 4.8;
@@ -366,7 +450,7 @@ function ringOn(piece, F, s0, s1, rIn, rOut, { tone = "mid", name, extra = "", b
   put(piece, G.add3(F.o, G.mul3(F.a, (s0 + s1) / 2)), Sv(G.ringBand(s0, s1, rIn, rOut, F, P), { tone }) + extra, { name: id, shapes: [shape], bias });
   return shape;
 }
-const chest = bodyZ("chest", 0, 0, S.CHEST.body, S.CHEST.z0, S.CHEST.z1, { seams: [116, 140], name: "chest.barrel", count: 36, hollow: { wall: 1.6, floor: [25, 28.4, 1.6], roof: 1.6 } });
+const chest = bodyZ("chest", 0, 0, S.CHEST.body, S.CHEST.z0, S.CHEST.z1, { seams: [116, 140], name: "chest.barrel", count: 36, gloss: { spotTol: 0.004, rows: 60 }, hollow: { wall: 1.6, floor: [25, 28.4, 1.6], roof: 1.6 } });
 // The barrel as a solid, used only to cut the pads seated on it.
 const chestSolid = Object.assign(A.solid(Fz(0, 0), S.sampled(S.CHEST.body, S.CHEST.z0, S.CHEST.z1, 36), { radius: S.CHEST.body.radius, name: "chest.barrel" }), { piece: "chest", ride: "chest", move: PIECES.chest.move });
 {
@@ -426,49 +510,96 @@ for (const [index, x] of LIGHTS.xs.entries()) {
   });
   put("chest", [0, HB.face + 0.5, KEYS.z0 + 1.5], parts.join(""), { name: "chest.keys", bias: 1.1, shapes });
 }
-// Shoulder drums at the barrel's front corners (R6.50 in on the CAD), each carrying a
-// ball socket: MGM's "flexible sleeve & ball socket".
-const DRUM_SH = { z: 128, az: 52 * DEG, a: 15, s1: 38.4, face: 46.2, socket: 1.4, ball: 6 };
-const shoulderDir = (side) => [side * Math.sin(DRUM_SH.az), Math.cos(DRUM_SH.az), 0];
-const drums = {};
+// Shoulder pods at the barrel's front corners (R6.50 in on the CAD): round domes on a ribbed
+// collar, each with a ball socket in its face: MGM's "flexible sleeve & ball socket".
+const POD = { z: 128, az: 52 * DEG, a: 15, s1: 38.4, wide: 42.4, R: 16.5, face: 52, faceR: 8.5, socket: 1.2, ball: 6.5 };
+POD.body = S.bulb({ R: POD.R, c: POD.wide, below: S.reach(POD.R, POD.a, 2.4, POD.wide - POD.s1), above: S.reach(POD.R, POD.faceR, 2.4, POD.face - POD.wide), p: 2.4 });
+const shoulderDir = (side) => [side * Math.sin(POD.az), Math.cos(POD.az), 0];
 for (const side of [-1, 1]) {
   const d = shoulderDir(side);
-  const F = G.frameOf([0, 0, DRUM_SH.z], d, G.unit3([d[1], -d[0], 0]), [0, 0, 1]);
-  const start = (t) => Math.sqrt(Math.max(0, S.CHEST.body.radius(DRUM_SH.z + DRUM_SH.a * Math.sin(t)) ** 2 - (DRUM_SH.a * Math.cos(t)) ** 2));
-  saddle("chest", F, DRUM_SH.a, start, DRUM_SH.s1, chestSolid, { name: "chest.shoulder-pad" });
+  const F = G.frameOf([0, 0, POD.z], d, G.unit3([d[1], -d[0], 0]), [0, 0, 1]);
+  const start = (t) => Math.sqrt(Math.max(0, S.CHEST.body.radius(POD.z + POD.a * Math.sin(t)) ** 2 - (POD.a * Math.cos(t)) ** 2));
+  saddle("chest", F, POD.a, start, POD.s1, chestSolid, { name: "chest.shoulder-pad" });
   const facing = G.dot3(F.a, V) > 0.12;
-  const profile = [[DRUM_SH.s1, DRUM_SH.a], [43, DRUM_SH.a], [44.6, 14.4, 1], [45.6, 13.2, 1], [DRUM_SH.face, 11.8]];
-  drums[side] = turnedOn("chest", F, profile, { tone: "hi", name: "chest.shoulder", inner: Ln(G.arcOf(F, 41, DRUM_SH.a, P), { tone: "faint" }), extra: facing ? Dots(G.dotsOf(F, DRUM_SH.face, 9.6, 10, P, { all: true }), { size: 0.42 }) : "" });
-  discOn("chest", F, DRUM_SH.face, DRUM_SH.face + DRUM_SH.socket, 7.6, { tone: "mid", name: "chest.socket", inner: facing ? Ln(G.circleOf(F, DRUM_SH.face + DRUM_SH.socket, 4.6, P), { tone: "lo" }) : "" });
+  // The collar's ribs, round the pod's swelling root.
+  const ribs = [39.3, 40.2, 41.1].map((s) => G.arcOf(F, s, POD.body.radius(s), P, { slope: POD.body.slope(s) })).join("");
+  bodyOn("chest", F, POD.body, POD.s1, POD.face, { tone: "hi", name: "chest.shoulder", count: 30, extra: Ln(ribs, { tone: "lo" }) });
+  discOn("chest", F, POD.face, POD.face + POD.socket, 7.2, { tone: "mid", name: "chest.socket", inner: facing ? Ln(G.circleOf(F, POD.face + POD.socket, 5, P), { tone: "lo" }) : "", extra: facing ? Dots(G.dotsOf(F, POD.face + POD.socket, 6.2, 10, P, { all: true }), { size: 0.4 }) : "" });
 }
 
-// ---------------------------------------------------------------- arms: ball, bellows sleeve, three-finger claw
-const ARM = { sleeve: 5.2, length: 14, wrist: 5.5 };
+// ---------------------------------------------------------------- arms: ball, rings, flanged wrist bulb, hand
+// Extended forward and a little down, as in the studio stills and on the poster: a ball in the
+// socket, three rubber rings stepping down from the shoulder, a big wrist bulb with a flange
+// round its widest point, the chrome tool adaptor, and a rubber hand: a palm block with two
+// flat, jointed fingers side by side and a thumb under them.
+const ARM = { ball: 7.2, root: 3.6, rings: [8.4, 7.8, 7.2], ring: 4.2, neck: 0.86, bulb: { R: 8.6, rise: 2.4, flange: { r: 9.8, t: 0.9 }, dome: 6.6, to: 3.6 }, collar: { r: 3.6, length: 1.6 } };
+const HAND = {
+  palm: { length: 4.5, poly: roundRect(-5.2, -3.6, 5.2, 3.8, 2.4) },
+  finger: roundRect(-2.35, -1.5, 2.35, 1.5, 0.9),
+  digits: [
+    { u: -2.55, v: 1.4, length: 10, turn: [-6, 0] },
+    { u: 2.55, v: 1.4, length: 10, turn: [6, 0] },
+    { u: 0, v: -1.75, length: 6.2, turn: [0, -14] },
+  ],
+};
+// The visible part of a prism's cross-section at s: a knuckle groove that ends on the outline.
+function grooveOf(F, poly, s) {
+  const seen = poly.map((p, i) => {
+    const q = poly[(i + 1) % poly.length];
+    const n = G.add3(G.mul3(F.u, q[1] - p[1]), G.mul3(F.v, p[0] - q[0]));
+    return G.dot3(n, V) > 1e-6;
+  });
+  const start = seen.findIndex((on, i) => on && !seen[(i - 1 + seen.length) % seen.length]);
+  if (start < 0) return "";
+  const run = [];
+  for (let k2 = 0; k2 < poly.length && seen[(start + k2) % poly.length]; k2++) run.push(poly[(start + k2) % poly.length]);
+  run.push(poly[(start + run.length) % poly.length]);
+  return path(run.map(([x, y]) => G.add3(G.add3(G.add3(F.o, G.mul3(F.a, s)), G.mul3(F.u, x)), G.mul3(F.v, y))));
+}
 for (const side of [1, -1]) {
   const piece = side > 0 ? "armR" : "armL";
   const d = shoulderDir(side);
-  const centre = G.add3([0, 0, DRUM_SH.z], G.mul3(d, DRUM_SH.face + DRUM_SH.socket + DRUM_SH.ball));
-  const ball = ballAt(piece, centre, DRUM_SH.ball, { tone: "hi", name: `${piece}.ball` });
-  const dir = G.unit3([side * 0.36, 0.92, -0.18]);
-  const AF = G.frameOf(centre, dir, G.unit3(G.cross3([0, 0, 1], dir)), G.cross3(dir, G.unit3(G.cross3([0, 0, 1], dir))));
-  const s0 = Math.sqrt(DRUM_SH.ball ** 2 - ARM.sleeve ** 2);
-  const ribs = [];
-  for (let s = s0 + 0.9; s < s0 + ARM.length - 0.5; s += 0.85) ribs.push(G.arcOf(AF, s, ARM.sleeve, P));
-  discOn(piece, AF, s0 - 0.6, s0 + ARM.length, ARM.sleeve, { tone: "hi", name: `${piece}.sleeve`, inner: Ln(ribs.join(""), { tone: "lo" }), cut: [ball] });
-  const wrist = s0 + ARM.length;
-  discOn(piece, AF, wrist, wrist + 1.8, ARM.wrist, { tone: "mid", name: `${piece}.wrist` });
-  const palm = [[wrist + 1.8, 4.6], [wrist + 3.4, 4.6], [wrist + 4.8, 3.6, 1], [wrist + 5.6, 2.6]];
-  turnedOn(piece, AF, palm, { tone: "hi", name: `${piece}.palm` });
-  const face = wrist + 5.6;
-  for (const angle of [90, 210, 330]) {
-    const owner = `${piece}.digit${angle}`;
-    const radial = G.radialOf(AF, angle * DEG);
-    const base = G.add3(G.pointOf(AF, face, 1.4, angle * DEG), G.mul3(AF.a, 1.3));
-    ballAt(piece, base, 1.3, { tone: "mid", name: `${piece}.knuckle`, owner });
-    const fdir = G.unit3(G.add3(G.mul3(AF.a, Math.cos(14 * DEG)), G.mul3(radial, Math.sin(14 * DEG))));
-    const FF = G.frameAlong(base, fdir);
-    const start = Math.sqrt(1.3 ** 2 - 1.05 ** 2);
-    turnedOn(piece, FF, [[start, 1.05], [start + 1.6, 1.05], [start + 6, 0.6], [start + 6.9, 0.36]], { tone: "hi", name: `${piece}.finger`, owner });
+  const centre = G.add3([0, 0, POD.z], G.mul3(d, POD.face + POD.socket + ARM.ball));
+  const ball = ballAt(piece, centre, ARM.ball, { tone: "hi", name: `${piece}.ball` });
+  const dir = G.unit3([side * 0.34, 0.86, -0.36]);
+  const across = G.unit3(G.cross3([0, 0, 1], dir));
+  const AF = G.frameOf(centre, dir, across, G.cross3(dir, across));
+  // The first ring flares out of the ball's face; the others step down from it.
+  let s = Math.sqrt(ARM.ball ** 2 - ARM.root ** 2) - 0.3;
+  ARM.rings.forEach((R, index) => {
+    const h = S.reach(R, R * ARM.neck, 2.4, ARM.ring / 2);
+    const below = index === 0 ? S.reach(R, ARM.root, 2.4, ARM.ring / 2 + 0.4) : h;
+    const c = s + (index === 0 ? ARM.ring / 2 + 0.4 : ARM.ring / 2);
+    const length = index === 0 ? ARM.ring + 0.4 : ARM.ring;
+    const body = S.bulb({ R, c, below, above: h, p: 2.4 });
+    bodyOn(piece, AF, body, s, s + length, { tone: "hi", name: `${piece}.sleeve`, count: 16, ...(index === 0 ? { cut: [ball] } : {}) });
+    s += length;
+  });
+  // The wrist bulb, in two halves either side of its flange.
+  const B = ARM.bulb;
+  const rise = S.bulb({ R: B.R, c: s + B.rise, below: S.reach(B.R, ARM.rings.at(-1) * ARM.neck, 2.2, B.rise), above: 1, p: 2.2 });
+  bodyOn(piece, AF, rise, s, s + B.rise, { tone: "hi", name: `${piece}.wrist-bulb`, count: 12 });
+  s += B.rise;
+  discOn(piece, AF, s, s + B.flange.t, B.flange.r, { tone: "hi", name: `${piece}.flange` });
+  s += B.flange.t;
+  const dome = S.bulb({ R: B.R, c: s, below: 1, above: S.reach(B.R, B.to, 2, B.dome), p: 2 });
+  bodyOn(piece, AF, dome, s, s + B.dome, { tone: "hi", name: `${piece}.wrist-dome`, count: 20 });
+  s += B.dome;
+  discOn(piece, AF, s, s + ARM.collar.length, ARM.collar.r, { tone: "mid", name: `${piece}.wrist` });
+  s += ARM.collar.length;
+  const palm = record(A.prism(AF, HAND.palm.poly, s, s + HAND.palm.length, { name: `${piece}.palm` }));
+  put(piece, G.add3(AF.o, G.mul3(AF.a, s + HAND.palm.length / 2)), Sv(G.prismOf(AF, HAND.palm.poly, s, s + HAND.palm.length, P), { tone: "hi" }), { name: `${piece}.palm`, shapes: [palm] });
+  const root = s + HAND.palm.length - 1.2;
+  for (const [index, digit] of HAND.digits.entries()) {
+    const [tu, tv] = digit.turn.map((deg) => Math.tan(deg * DEG));
+    const fdir = G.unit3(G.add3(AF.a, G.add3(G.mul3(AF.u, tu), G.mul3(AF.v, tv))));
+    const o = G.add3(G.add3(G.add3(AF.o, G.mul3(AF.a, root)), G.mul3(AF.u, digit.u)), G.mul3(AF.v, digit.v));
+    const fu = G.unit3(G.sub3(AF.u, G.mul3(fdir, G.dot3(AF.u, fdir))));
+    const FF = G.frameOf(o, fdir, fu, G.cross3(fdir, fu));
+    const id = `${piece}.finger${index}`;
+    const grooves = [0.42, 0.72].map((t) => grooveOf(FF, HAND.finger, digit.length * t)).join("");
+    const shape = record(A.prism(FF, HAND.finger, 0, digit.length, { name: id, cut: [palm], seated: true }));
+    put(piece, G.add3(o, G.mul3(fdir, digit.length / 2)), Sv(G.prismOf(FF, HAND.finger, 0, digit.length, P), { tone: "hi", inner: Ln(grooves, { tone: "mid" }) }), { name: id, shapes: [shape] });
   }
 }
 
@@ -737,7 +868,21 @@ let shellShape;
   const outer = profile.map(([z, r]) => [z, r]).concat([[SH.top, 0]]);
   const inner = [[SH.top - SH.wall, 0], ...[...profile].reverse().map(([z, r]) => [Math.min(z, SH.top - SH.wall), Math.max(0.1, r - SH.wall)])];
   shellShape = record(A.body(F, [...outer, ...inner], { name: "dome.shell", cut: [brimCut(), besideWindow(-1), besideWindow(1)] }));
-  put("dome", [0, 0, 196], `<clipPath id="rb-shell"><path d="${clip}"/></clipPath><g class="rb-glass" clip-path="url(#rb-shell)">${Sv(paths, { tone: "hi" })}</g>` + k.fadeLineSvg(shine, { fade: [10, 10], tone: "mid", className: "rb-shine" }), { name: "dome.shell", shapes: [shellShape], bias: 2 });
+  const glint = glossOn(F, S.shellRadius, S.shellSlope, SH.base + 6, SH.top - 0.6, { width: 0.1, floor: 0.2, spotTol: 0.008, kind: ' data-glass=""' });
+  const peakZ = (() => {
+    let best = SH.base;
+    let most = -1;
+    const [hu, hv, ha] = [G.dot3(HV, F.u), G.dot3(HV, F.v), G.dot3(HV, F.a)];
+    for (let z = SH.base + 6; z < SH.top - 1; z += 0.25) {
+      const k2 = S.shellSlope(z);
+      const m = (Math.hypot(hu, hv) - ha * k2) / Math.sqrt(1 + k2 * k2);
+      if (m > most) [most, best] = [m, z];
+    }
+    return best;
+  })();
+  const glintAz = Math.atan2(G.dot3(HV, F.v), G.dot3(HV, F.u));
+  const glintAt = at(G.add3([0, 0, peakZ], G.add3(G.mul3(F.u, S.shellRadius(peakZ) * Math.cos(glintAz)), G.mul3(F.v, S.shellRadius(peakZ) * Math.sin(glintAz)))));
+  put("dome", [0, 0, 196], `<clipPath id="rb-shell"><path d="${clip}"/></clipPath><g class="rb-glass" clip-path="url(#rb-shell)">${Sv(paths, { tone: "hi" })}${glint}</g>` + k.fadeLineSvg(shine, { fade: [10, 10], tone: "mid", className: "rb-shine" }) + sparkle(glintAt, 9), { name: "dome.shell", shapes: [shellShape], bias: 2 });
 }
 // Ears: a cone hub out of each side of the hood with a blue eye lamp on its front and two
 // whisker spikes, and a rotating ring: on a short horizontal shaft on the left, on a post
@@ -948,9 +1093,26 @@ const VU = { x0: CONSOLE.x + 6, x1: CONSOLE.x + 30, w0: 0.24, w1: 0.74, r: 9.4 }
 // ---------------------------------------------------------------- settle, page
 A.settle(R, P);
 items.sort((a, b) => a.key - b.key);
+// Materials: gunmetal lacquer for the body, chrome trim, a brass bell, a cream stand with a
+// seafoam enamel console. Each sets the kit's tone tokens on its item (robby.css).
+const MATERIALS = [
+  [/^stand\.cable/, "gunmetal"],
+  [/^stand\.(console|console-top)\b/, "enamel"],
+  [/^stand\.(knob|toggle|caster|mic|gooseneck|gauge-rider|gauge-pointer|gauge-screw|lamp-bezel|gland|console-handle|foot-flange)/, "chrome"],
+  [/^stand\./, "cream"],
+  [/^dome\.shell/, ""],
+  [/^head\.(chassis|keyface)/, ""],
+  [/^brain\.(lamp|varms)\b/, ""],
+  [/^(dome\.(gland|mast)|head\.ear[LR]-(ring|shaft|ball|elbow|post|spike)|head\.eye|head\.comb-fin|chest\.(socket|keys|bearing|heartbox|star|quad)|arm[LR]\.wrist(?=$|#)|brain\.(shaft|carrier|flange|lamp-holder|varm-post|gyro)|pelvis\.hip-(plate|pivot)|legs\.connector)/, "chrome"],
+  [/^(brain\.bell|core\.)/, "brass"],
+  [/^arm[LR]\.(palm|finger)/, "rubber"],
+  [/./, "gunmetal"],
+];
+const materialOf = (name) => MATERIALS.find(([pattern]) => pattern.test(name))[1];
 const groups = items.map((item, index) => {
   const [mx, my, mz] = item.move;
-  return `<g class="it" data-piece="${item.piece}"${item.ride !== item.piece ? ` data-ride="${item.ride}"` : ""} data-k="${item.key.toFixed(2)}" data-m="${mx.toFixed(1)},${my.toFixed(1)},${mz.toFixed(1)}" data-i="${index}">${item.svg}</g>`;
+  const material = materialOf(item.name);
+  return `<g class="it${material ? ` rb-m-${material}` : ""}" data-piece="${item.piece}"${item.ride !== item.piece ? ` data-ride="${item.ride}"` : ""} data-k="${item.key.toFixed(2)}" data-m="${mx.toFixed(1)},${my.toFixed(1)},${mz.toFixed(1)}" data-i="${index}">${item.svg}</g>`;
 });
 
 const unit = (vector) => {
@@ -984,8 +1146,35 @@ const DATA = {
 };
 
 const LABEL =
-  "Robby the Robot on a service riser: stacked-globe legs on oval shoes on a turntable dais, a squat pelvis, a barrel chest with the indicator panel and sample door, ribbed arms in ball sockets with three-finger claws, and a bullet head: a black hood with comb fins and two spinning ear rings, a clear cap over a gyro tower, and a clear front window over six relay keys, above a wide brim and the blue neon voice tubes. A height gauge reads 214 cm; MGM's control console and microphone feed a cable into the right shoe.";
+  "Robby the Robot on a service riser: stacked-globe legs on oval shoes on a turntable dais, a squat pelvis, a barrel chest with the indicator panel and sample door, arms reaching forward from ball sockets, rubber rings and a flanged wrist bulb ending in three-fingered rubber hands, and a bullet head: a black hood with comb fins and two spinning ear rings, a clear cap over a gyro tower, and a clear front window over six relay keys, above a wide brim and the blue neon voice tubes. A height gauge reads 214 cm; MGM's control console and microphone feed a cable into the right shoe.";
 
+// The backdrop: Altair IV and its ring hanging behind Robby, a small moon, stars (the dark
+// theme shows them) and a few glints, in the manner of a 1950s poster. Behind everything.
+{
+  const head = at([0, 0, 196]);
+  const planet = { x: head[0] + 300, y: head[1] - 175, r: 122 };
+  const rng = (() => {
+    let seed = 7;
+    return () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  })();
+  const stars = [];
+  for (let index = 0; index < 90; index++) {
+    const x = 20 + rng() * (W - 40);
+    const y = 20 + rng() * (head[1] + 260);
+    const r = 0.5 + rng() * rng() * 1.6;
+    stars.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(2)}"/>`);
+  }
+  const ring = (rx, ry) => `<ellipse cx="${planet.x}" cy="${planet.y}" rx="${rx}" ry="${ry}" transform="rotate(-14 ${planet.x} ${planet.y})"/>`;
+  const sky = `<defs><radialGradient id="rb-planet" cx="38%" cy="32%" r="75%"><stop offset="0" class="rb-planet-a"/><stop offset="0.65" class="rb-planet-b"/><stop offset="1" class="rb-planet-c"/></radialGradient><radialGradient id="rb-glow" cx="50%" cy="50%" r="50%"><stop offset="0.55" class="rb-glow-a"/><stop offset="1" class="rb-glow-b"/></radialGradient></defs>
+<g class="rb-sky" aria-hidden="true"><g class="rb-stars">${stars.join("")}</g>
+<circle class="rb-planet-glow" cx="${planet.x}" cy="${planet.y}" r="${planet.r * 1.45}" fill="url(#rb-glow)"/>
+<g class="rb-ring rb-ring-back">${ring(planet.r * 1.75, planet.r * 0.34)}</g>
+<circle class="rb-planet" cx="${planet.x}" cy="${planet.y}" r="${planet.r}" fill="url(#rb-planet)"/>
+<path class="rb-ring-front" d="M ${planet.x - planet.r * 1.75} ${planet.y} A ${planet.r * 1.75} ${planet.r * 0.34} 0 0 0 ${planet.x + planet.r * 1.75} ${planet.y} L ${planet.x + planet.r * 1.75 - 3} ${planet.y} A ${planet.r * 1.75 - 3} ${planet.r * 0.34 - 3} 0 0 1 ${planet.x - planet.r * 1.75 + 3} ${planet.y} Z" transform="rotate(-14 ${planet.x} ${planet.y})"/>
+<circle class="rb-moon" cx="${head[0] - 250}" cy="${head[1] - 205}" r="22"/>
+${[[head[0] - 160, head[1] - 90, 10], [planet.x + 110, planet.y + 175, 8], [head[0] - 300, head[1] + 90, 7], [planet.x - 200, planet.y - 40, 7], [head[0] + 60, head[1] - 250, 6]].map(([x, y, size]) => sparkle([x, y], size, "rb-sky-glint")).join("")}</g>`;
+  back.unshift(sky);
+}
 const backSvg = k.figureSvg({ width: W, height: H, label: LABEL, body: back, className: "rb-back" });
 const frontSvg = `<svg xmlns="http://www.w3.org/2000/svg" class="iso-svg rb-front" viewBox="0 0 ${W} ${H}" aria-hidden="true"><g class="rb-machine">${groups.join("")}</g></svg>`;
 

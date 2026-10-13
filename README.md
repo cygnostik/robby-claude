@@ -51,6 +51,8 @@ node vendor/anatomy/scripts/capture.mjs robby/robby.html --out shot.png
 - **Proportions:** taken from ArthMat's dimensioned CAD drawing of Robby (2013, in inches), scaled to the 214 cm height Wikipedia gives. Part names follow MGM's construction sheet.
 - **The head:** photographs of replicas and renders of the clear shell show where the plastic stops. It covers the cap of the bullet-shaped head and runs down the front as a window. A black hood makes the cheeks and back, and carries the ears and comb fins.
 - **Reference images:** the supplied drawings and photographs are kept out of the repository (`Robby-Finds/` is ignored).
+- **Arms:** round shoulder pods on ribbed collars, a ball in each socket, and arms reaching forward: three rubber rings, a flanged wrist bulb, the chrome tool adaptor, and a three-fingered rubber hand with flat, jointed fingers, after the CAD drawing, studio stills, close-ups of replicas and the poster.
+- **Look:** 1950s publicity-still materials: black lacquer with airbrushed highlights computed from the drawing's own light, chrome trim, a brass gyro bell, a cream stand and a seafoam console, under Altair IV.
 - **Console:** follows the dimensions in the Bonhams lot.
 - **Shapes:** every turned body uses an analytic profile, and every part records its true shape. The audit proves that nothing passes through anything at rest, apart, or in any frame of the explode, and that every overlap is drawn in true depth order.
 
