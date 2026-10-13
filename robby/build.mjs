@@ -134,9 +134,35 @@ function glossOn(F, radius, slope, s0, s1, { width = 0.14, rows = 36, floor = 0.
         if (facing(row.s, a, hu, hv, ha) > peak - spotTol) near.push(point(row.s, a));
       }
     }
-    if (near.length > 2) out += `<path class="rb-gloss" data-g="spot"${kind} d="${k.pathOf(G.hullOf(near), true)}"/>`;
+    if (near.length > 2) out += `<path class="rb-gloss" data-g="spot"${kind} d="${k.pathOf(ellipseOf(near), true)}"/>`;
   }
   return out;
+}
+// The ellipse that fits a cloud of screen points: their principal axes, reaching the farthest.
+function ellipseOf(points) {
+  const n = points.length;
+  const mx = points.reduce((sum, p) => sum + p[0], 0) / n;
+  const my = points.reduce((sum, p) => sum + p[1], 0) / n;
+  let sxx = 0;
+  let syy = 0;
+  let sxy = 0;
+  for (const [x, y] of points) {
+    sxx += (x - mx) ** 2;
+    syy += (y - my) ** 2;
+    sxy += (x - mx) * (y - my);
+  }
+  const angle = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+  const [ux, uy] = [Math.cos(angle), Math.sin(angle)];
+  let a = 0.1;
+  let b = 0.1;
+  for (const [x, y] of points) {
+    a = Math.max(a, Math.abs((x - mx) * ux + (y - my) * uy));
+    b = Math.max(b, Math.abs(-(x - mx) * uy + (y - my) * ux));
+  }
+  return Array.from({ length: 24 }, (_, j) => {
+    const t = (j / 24) * Math.PI * 2;
+    return [mx + a * Math.cos(t) * ux - b * Math.sin(t) * uy, my + a * Math.cos(t) * uy + b * Math.sin(t) * ux];
+  });
 }
 // The highlight on a ball: a soft disc where the surface faces the half-vector.
 function glossBall(centre, r) {
@@ -232,7 +258,13 @@ function bodyZ(piece, x, y, body, z0, z1, options = {}) {
   return bodyOn(piece, Fz(x, y), body, z0, z1, options);
 }
 // The same about any axis: F.a is the axis, s runs along it.
-function bodyOn(piece, F, body, z0, z1, { tone = "hi", seams = [], extra = "", bias = 0, name, count = 28, rims, hollow = 0, cut, owner, gloss, rim = false } = {}) {
+function bodyOn(piece, F, body, z0, z1, options = {}) {
+  const part = bodyParts(piece, F, body, z0, z1, options);
+  put(piece, part.ref, part.svg, { bias: options.bias ?? 0, name: part.id, shapes: part.shapes });
+  return part.shape;
+}
+// The drawing and recorded shapes of a turned body, for an item that holds several.
+function bodyParts(piece, F, body, z0, z1, { tone = "hi", seams = [], extra = "", name, count = 28, rims, hollow = 0, cut, seated = true, owner, gloss, rim = false } = {}) {
   const extraShapes = [];
   const profile = S.sampled(body, z0, z1, count);
   const paths = G.solidOf(profile, F, P, { smooth: { slope: body.slope, radius: body.radius }, ...(rims ? { rims } : {}) });
@@ -246,11 +278,11 @@ function bodyOn(piece, F, body, z0, z1, { tone = "hi", seams = [], extra = "", b
     if (hollow.floor) extraShapes.push(record(A.ring(F, z0, z0 + hollow.floor[2], hollow.floor[0], hollow.floor[1], { name: id, owner: id })));
     if (hollow.roof) extraShapes.push(record(A.disc(F, z1 - hollow.roof, z1, body.radius(z1), { name: id, owner: id })));
   } else {
-    shape = record(A.solid(F, profile, { radius: body.radius, name: id, owner, ...(cut ? { cut, seated: true } : {}) }));
+    shape = record(A.solid(F, profile, { radius: body.radius, name: id, owner, ...(cut ? { cut, seated } : {}) }));
   }
   const shine = (piece === "stand" || gloss === false ? "" : glossOn(F, body.radius, body.slope, z0, z1, gloss || {})) + (rim ? rimOn(F, body.radius, body.slope, z0, z1) : "");
-  put(piece, G.add3(F.o, G.mul3(F.a, (z0 + z1) / 2)), Sv(paths, { tone, inner: inner ? Ln(inner, { tone: "faint" }) : "" }) + shine + extra, { bias, name: id, shapes: [shape, ...extraShapes] });
-  return shape;
+  const ref = G.add3(F.o, G.mul3(F.a, (z0 + z1) / 2));
+  return { id, shape, shapes: [shape, ...extraShapes], ref, svg: Sv(paths, { tone, inner: inner ? Ln(inner, { tone: "faint" }) : "" }) + shine + extra };
 }
 
 function discOn(piece, F, s0, s1, r, { tone = "hi", extra = "", inner = "", bias = 0, name, lit = false, cut, seated, owner } = {}) {
@@ -473,21 +505,20 @@ const HIP = {
   z: 93.5,
   hub: { r: 6, from: 27.5 },
   plate: { from: 30.8, to: 32, R: 9, tip: [-1.5, 79], tipR: 1.5 },
-  crank: { to: 33.4, head: 3.6, bar: [1.7, 1.3], tip: [-2.8, 76.3] },
+  crank: { to: 33.4, head: 3.6, bar: [1.7, 1.3], tip: [-2.8, 76.8] },
   bolt: { washer: 1.3, r: 0.8, at: 33.7, to: 34.3 },
 };
 const circle2 = (cx, cy, r, n = 32) => Array.from({ length: n }, (_, i) => [cx + r * Math.cos((i / n) * Math.PI * 2), cy + r * Math.sin((i / n) * Math.PI * 2)]);
 for (const side of [-1, 1]) {
-  const globe = LEG_SHAPES[side].top;
   // s runs out along ±x; (u, v) are (y, z).
   const F = G.frameOf([0, 0, 0], [side, 0, 0], [0, 1, 0], [0, 0, 1]);
   const H = G.frameOf([0, HIP.y, HIP.z], [side, 0, 0], [0, 1, 0], [0, 0, 1]);
   discOn("pelvis", H, HIP.hub.from, HIP.plate.from, HIP.hub.r, { tone: "mid", name: "pelvis.hip-hub", cut: [pelvis] });
   const plate = G.hullOf([...circle2(HIP.y, HIP.z, HIP.plate.R, 48), ...circle2(...HIP.plate.tip, HIP.plate.tipR, 16)]);
-  prism("pelvis", F, plate, HIP.plate.from, HIP.plate.to, { tone: "hi", name: "pelvis.hip-plate", cut: [globe] });
+  prism("pelvis", F, plate, HIP.plate.from, HIP.plate.to, { tone: "hi", name: "pelvis.hip-plate" });
   const head = discOn("pelvis", H, HIP.plate.to, HIP.crank.to, HIP.crank.head, { tone: "hi", name: "pelvis.hip-crank" });
   const bar = G.hullOf([...circle2(HIP.y, HIP.z, HIP.crank.bar[0], 16), ...circle2(...HIP.crank.tip, HIP.crank.bar[1], 16)]);
-  prism("pelvis", F, bar, HIP.plate.to, HIP.crank.to - 0.25, { tone: "hi", name: "pelvis.hip-lever", cut: [head, globe] });
+  prism("pelvis", F, bar, HIP.plate.to, HIP.crank.to - 0.25, { tone: "hi", name: "pelvis.hip-lever", cut: [head] });
   discOn("pelvis", H, HIP.crank.to, HIP.bolt.at, HIP.bolt.washer, { tone: "mid", name: "pelvis.hip-washer" });
   const hex = Array.from({ length: 6 }, (_, i) => [HIP.bolt.r * Math.cos(((i + 0.5) / 6) * Math.PI * 2), HIP.bolt.r * Math.sin(((i + 0.5) / 6) * Math.PI * 2)]);
   prism("pelvis", H, hex, HIP.bolt.at, HIP.bolt.to, { tone: "hi", name: "pelvis.hip-bolt" });
@@ -546,14 +577,43 @@ function ringOn(piece, F, s0, s1, rIn, rOut, { tone = "mid", name, extra = "", b
   put(piece, G.add3(F.o, G.mul3(F.a, (s0 + s1) / 2)), Sv(G.ringBand(s0, s1, rIn, rOut, F, P), { tone }) + extra, { name: id, shapes: [shape], bias });
   return shape;
 }
-const chest = bodyZ("chest", 0, 0, S.CHEST.body, S.CHEST.z0, S.CHEST.z1, { seams: [116, 140], name: "chest.barrel", count: 36, gloss: { spotTol: 0.004, rows: 60 }, rim: true, hollow: { wall: 1.6, floor: [25, 28.4, 1.6], roof: 1.6 } });
+// The shoulder balls (R6.50 in on the CAD) sit in sockets at the barrel's front corners.
+const SHOULDER = { z: 127, az: 48 * DEG, R: 16, centre: S.CHEST.R - 3 };
+const shoulderDir = (side) => [side * Math.sin(SHOULDER.az), Math.cos(SHOULDER.az), 0];
+// Where a shoulder ball leaves the barrel: a dark socket gap with a lit rim, which shows as an
+// empty socket when the arm is lifted away.
+function socketSvg(side) {
+  const d = shoulderDir(side);
+  const c = G.add3([0, 0, SHOULDER.z], G.mul3(d, SHOULDER.centre));
+  const az = Math.atan2(d[0], d[1]);
+  const onBarrel = (t, psi) => {
+    const phi = az + (t * Math.cos(psi)) / S.CHEST.R;
+    const z = SHOULDER.z + t * Math.sin(psi);
+    const r = S.CHEST.body.radius(z);
+    return [r * Math.sin(phi), r * Math.cos(phi), z];
+  };
+  const edge = Array.from({ length: 72 }, (_, j) => {
+    const psi = (j / 72) * Math.PI * 2;
+    let lo = 0;
+    let hi = 30;
+    for (let i = 0; i < 40; i++) {
+      const t = (lo + hi) / 2;
+      if (Math.hypot(...G.sub3(onBarrel(t, psi), c)) < SHOULDER.R) lo = t;
+      else hi = t;
+    }
+    return onBarrel(hi + 0.6, psi);
+  });
+  const d2 = path(edge, true);
+  return `<path class="rb-socket" d="${d2}"/><path class="rb-socket-rim" d="${d2}"/>`;
+}
+const chest = bodyZ("chest", 0, 0, S.CHEST.body, S.CHEST.z0, S.CHEST.z1, { seams: [116, 140], name: "chest.barrel", count: 36, gloss: { spotTol: 0.004, rows: 60 }, rim: true, extra: socketSvg(1) + socketSvg(-1), hollow: { wall: 1.6, floor: [25, 28.4, 1.6], roof: 1.6 } });
 // The barrel as a solid, used only to cut the pads seated on it.
 const chestSolid = Object.assign(A.solid(Fz(0, 0), S.sampled(S.CHEST.body, S.CHEST.z0, S.CHEST.z1, 36), { radius: S.CHEST.body.radius, name: "chest.barrel" }), { piece: "chest", ride: "chest", move: PIECES.chest.move });
 {
   const F = Fz(0, 0);
   const id = "chest.bearing";
-  const shape = record(A.ring(F, S.BEARING.z0, S.BEARING.z1, S.BEARING.rIn, S.BEARING.rOut, { name: id }));
-  put("chest", [0, 0, S.BEARING.z0 + 0.5], Sv(G.ringBand(S.BEARING.z0, S.BEARING.z1, S.BEARING.rIn, S.BEARING.rOut, F, P), { tone: "mid" }) + Dots(G.dotsOf(F, S.BEARING.z1, 22.3, 24, P, { all: true }), { size: 0.35 }), { name: id, shapes: [shape] });
+  const shape = record(A.disc(F, S.BEARING.z0, S.BEARING.z1, S.BEARING.rOut, { name: id }));
+  put("chest", [0, 0, S.BEARING.z0 + 0.5], Sv(G.disc(S.BEARING.z0, S.BEARING.z1, S.BEARING.rOut, F, P), { tone: "mid" }) + Dots(G.dotsOf(F, S.BEARING.z1, 22.3, 24, P, { all: true }), { size: 0.35 }), { name: id, shapes: [shape] });
 }
 // MGM's sheet calls the panel the "analyzing hopper & indicator panel": a box standing 2 cm
 // proud of the barrel in the body's own lacquer, its frame set with a chain of beads. Inside,
@@ -566,6 +626,7 @@ const DOOR = { x0: IN.x0, x1: IN.x1, z0: 133.5, z1: 138.6, bulge: 1.2 };
 const LEDGE = 128.8;
 const LIGHTS = { z: 122.8, r: 3.75, glass: 3.1, xs: [-5.2, 5.2] };
 const KEYS = { xs: [-7.8, -2.6, 2.6, 7.8], w: 2, z0: 112.9, h: 3.8, d: 0.6, slot: [2.4, 4.2], band: [112.3, 117.4] };
+let heartbox;
 // The points of a closed outline, evenly spaced along it.
 function evenly(points, pitch) {
   const out = [];
@@ -601,7 +662,7 @@ function evenly(points, pitch) {
   const creases = k.pathOf([f(IN.x0, LEDGE), f(IN.x1, LEDGE)]) + k.pathOf([f(IN.x0, DOOR.z0), f(IN.x1, DOOR.z0)]);
   const lip = k.pathOf([f(IN.x0 + 1.2, IN.z0), f(IN.x1 - 1.2, IN.z0)]);
   const body =
-    `<path class="rb-recess" d="${k.pathOf(recess, true)}"/>` +
+    `<path class="rb-panel-recess" d="${k.pathOf(recess, true)}"/>` +
     Ln(k.pathOf(recess, true), { tone: "lo" }) +
     `<path class="rb-keylight" d="${lip}"/>` +
     `<path class="rb-slot" d="${k.pathOf(mouth, true)}"/><path class="rb-slot" d="${k.pathOf(notch, true)}"/>` +
@@ -610,7 +671,7 @@ function evenly(points, pitch) {
     `<path class="rb-slot" d="${slots}"/>` +
     `<g class="rb-beads">${Dots(beads, { size: (0.42 * KS).toFixed(2), tone: "hi" })}</g>`;
   const id = "chest.heartbox";
-  const shape = record(A.extruded(ring, HB.z0, HB.z1 - HB.z0, { name: id, cut: [chestSolid], seated: true }));
+  const shape = (heartbox = record(A.extruded(ring, HB.z0, HB.z1 - HB.z0, { name: id, cut: [chestSolid], seated: true })));
   put("chest", [0, HB.face - 1, (HB.z0 + HB.z1) / 2], Sv(k.extrude(ring, HB.z0, HB.z1 - HB.z0, P, { convex: false, bevel: 0.6 }), { tone: "hi" }) + body, { name: id, shapes: [shape], bias: 0.5 });
 }
 const FLAP = { hinge: [0, HB.face, DOOR.z0], along: [-1, 0, 0], up: [0, 0, 1], out: [0, 1, 0], width: DOOR.x1 - DOOR.x0 - 0.4, height: DOOR.z1 - DOOR.z0, thick: 0.6, bulge: DOOR.bulge };
@@ -618,7 +679,7 @@ const FLAP = { hinge: [0, HB.face, DOOR.z0], along: [-1, 0, 0], up: [0, 0, 1], o
   const { F, poly } = rollTop({ ...FLAP, angle: 0 });
   const w = FLAP.width / 2;
   const id = "chest.door";
-  const shape = record(A.prism(F, poly, -w, w, { name: id }));
+  const shape = record(A.prism(F, poly, -w, w, { name: id, cut: [heartbox], seated: true }));
   put("chest", [0, HB.face + 0.4, (DOOR.z0 + DOOR.z1) / 2], `<g data-live="door">${Sv(G.prismOf(F, poly, -w, w, P), { tone: "hi" })}</g>`, { name: id, shapes: [shape], bias: 1 });
 }
 // The lamps: on the left a faceted clear lens holding a four-pointed star, on the right a brass
@@ -682,7 +743,6 @@ function quadInside(angle, lit) {
 // at its tip. Out of the cut come the tool adaptor and a rubber mitten: two long fingers
 // stacked one over the other in a V and a short thumb on the inner side, drooping a little, as
 // in the studio stills.
-const SHOULDER = { z: 127, az: 48 * DEG, R: 16, centre: S.CHEST.R - 3 };
 const ARM = {
   dir: [0.157, 0.892, -0.423],
   rolls: [13.4, 12.9, 12.4, 11.9],
@@ -692,7 +752,6 @@ const ARM = {
   half: { R: 11.2, cut: 6.3 },
   adaptor: { r: 5.8, length: 2.4 },
 };
-const shoulderDir = (side) => [side * Math.sin(SHOULDER.az), Math.cos(SHOULDER.az), 0];
 const HAND = {
   droop: 20 * DEG,
   cuff: { r: 5.2, length: 1 },
@@ -751,7 +810,7 @@ for (const side of [1, -1]) {
     }
   }
   const ballId = `${piece}.shoulder`;
-  const ball = record(A.ball(centre, SHOULDER.R, { name: ballId, cut: [chestSolid], seated: true }));
+  const ball = record(A.ball(centre, SHOULDER.R, { name: ballId, cut: [chestSolid] }));
   put(piece, G.add3(centre, G.mul3(d, SHOULDER.R * 0.5)), `<clipPath id="rb-shoulder${tag}"><path d="${k.pathOf(G.hullOf(outside), true)}"/></clipPath><g clip-path="url(#rb-shoulder${tag})">${Sv(G.sphereOf(centre, SHOULDER.R, P), { tone: "hi" })}${glossBall(centre, SHOULDER.R)}${rimOn(G.frameOf(centre, [0, 0, 1], [1, 0, 0], [0, 1, 0]), sphereBody(SHOULDER.R).radius, sphereBody(SHOULDER.R).slope, -SHOULDER.R * 0.97, SHOULDER.R * 0.97)}</g>`, { name: ballId, shapes: [ball] });
   const dir = G.unit3([side * ARM.dir[0], ARM.dir[1], ARM.dir[2]]);
   const across = G.unit3(G.cross3([0, 0, 1], dir));
@@ -762,7 +821,7 @@ for (const side of [1, -1]) {
     const h = S.reach(R, R * ARM.neck, 2.4, ARM.roll / 2);
     const body = S.bulb({ R, c: s + ARM.roll / 2, below: h, above: h, p: 2.4 });
     const cut = index === 0 ? [ball, chestSolid] : index === 1 ? [ball] : undefined;
-    bodyOn(piece, AF, body, s, s + ARM.roll, { tone: "hi", name: `${piece}.sleeve`, count: 18, cut, gloss: { width: 0.07 } });
+    bodyOn(piece, AF, body, s, s + ARM.roll, { tone: "hi", name: `${piece}.sleeve`, count: 18, cut, seated: false, gloss: { width: 0.07 } });
     s += ARM.roll;
   });
   const L = ARM.lip;
@@ -774,18 +833,22 @@ for (const side of [1, -1]) {
   bodyOn(piece, AF, S.bulb({ R: H.R, c: s, below: 0.5, above: S.reach(H.R, H.cut, 2, halfLength), p: 2 }), s, s + halfLength, { tone: "hi", name: `${piece}.half-ball`, count: 24, rim: true });
   s += halfLength;
   const Ad = ARM.adaptor;
-  discOn(piece, AF, s, s + Ad.length, Ad.r, { tone: "mid", name: `${piece}.adaptor`, inner: Ln(G.arcOf(AF, s + Ad.length / 2, Ad.r, P), { tone: "lo" }) });
+  const adaptor = discOn(piece, AF, s, s + Ad.length, Ad.r, { tone: "mid", name: `${piece}.adaptor`, inner: Ln(G.arcOf(AF, s + Ad.length / 2, Ad.r, P), { tone: "lo" }) });
   s += Ad.length;
-  const cuff = discOn(piece, AF, s, s + HAND.cuff.length, HAND.cuff.r, { tone: "mid", name: `${piece}.cuff` });
+  // The cuff, the mitten and its fingers are one item, drawn back to front, since the fingers
+  // grow out of the mitten and the mitten out of the cuff.
+  const hand = [];
+  const cuff = record(A.disc(AF, s, s + HAND.cuff.length, HAND.cuff.r, { name: `${piece}.cuff` }));
+  hand.push({ depth: -Infinity, svg: Sv(G.disc(s, s + HAND.cuff.length, HAND.cuff.r, AF, P), { tone: "mid" }), shape: cuff });
   s += HAND.cuff.length;
   // The mitten droops from the cuff's end.
   const pivot = G.add3(AF.o, G.mul3(AF.a, s - 1));
   const hd = G.unit3(G.sub3(G.mul3(AF.a, Math.cos(HAND.droop)), G.mul3(AF.v, Math.sin(HAND.droop))));
   const HF = G.frameOf(pivot, hd, AF.u, G.cross3(hd, AF.u));
-  const palmId = `${piece}.palm`;
-  const palm = record(A.prism(HF, HAND.palm.poly, 0, HAND.palm.length, { name: palmId, cut: [cuff], seated: true }));
-  put(piece, G.add3(pivot, G.mul3(hd, HAND.palm.length / 2)), Sv(G.prismOf(HF, HAND.palm.poly, 0, HAND.palm.length, P), { tone: "hi" }), { name: palmId, shapes: [palm] });
+  const palm = record(A.prism(HF, HAND.palm.poly, 0, HAND.palm.length, { name: `${piece}.palm`, cut: [cuff, adaptor], seated: true }));
+  hand.push({ depth: -1e9, svg: Sv(G.prismOf(HF, HAND.palm.poly, 0, HAND.palm.length, P), { tone: "hi" }), shape: palm });
   const root = HAND.palm.length - 1.4;
+  const digits = [];
   for (const [index, digit] of HAND.digits.entries()) {
     const u = digit.thumb ? side * digit.u : digit.u;
     const [tu, tv] = [digit.thumb ? side * digit.turn[0] : digit.turn[0], digit.turn[1]].map((deg) => Math.tan(deg * DEG));
@@ -796,8 +859,12 @@ for (const side of [1, -1]) {
     const knuckles = digit.thumb ? [0.5] : [0.38, 0.68];
     const body = fingerBody(digit.length, HAND.finger.R * (digit.thumb ? 0.92 : 1), HAND.finger.neck * (digit.thumb ? 0.92 : 1), knuckles);
     const ribs = digit.thumb ? [] : [0.86, 0.91];
-    bodyOn(piece, FF, body, 0, digit.length, { tone: "hi", name: `${piece}.finger${index}`, count: 30, seams: [...knuckles, ...ribs].map((t) => t * digit.length), cut: [palm], gloss: false });
+    const part = bodyParts(piece, FF, body, 0, digit.length, { tone: "hi", name: `${piece}.finger${index}`, count: 30, seams: [...knuckles, ...ribs].map((t) => t * digit.length), cut: digit.thumb ? [palm, ...digits] : [palm], gloss: false });
+    digits.push(part.shape);
+    hand.push({ depth: G.dot3(part.ref, V), svg: part.svg, shape: part.shape });
   }
+  hand.sort((a, b) => a.depth - b.depth);
+  put(piece, G.add3(pivot, G.mul3(hd, HAND.palm.length / 2)), hand.map((part) => part.svg).join(""), { name: `${piece}.hand`, shapes: hand.map((part) => part.shape) });
 }
 
 // ---------------------------------------------------------------- head: voice collar, brim lip, key chassis
@@ -851,7 +918,7 @@ const SPLIT = Math.acos(S.REAR.y0 / S.COLLAR.r);
       for (const t of [-NEON.a, 0, NEON.a]) frame.push(path([onCollar(t, S.COLLAR.z0, R + 0.05), onCollar(t, collarTop(t), R + 0.05)]));
       // Side plates: stacked horizontal edges from the stile back to where the brim cuts them.
       for (const sign of [-1, 1]) {
-        for (let z = S.COLLAR.z0 + 1.2; z < S.slantZ(R * Math.cos(NEON.a)) - 0.3; z += NEON.plates) {
+        for (let z = S.COLLAR.z0 + 0.2; z < S.slantZ(R * Math.cos(NEON.a)) - 0.3; z += NEON.plates) {
           const c = (z - S.SLANT.o) / (S.SLANT.k * R);
           const end = Math.min(SPLIT - 0.02, Math.acos(Math.max(-1, Math.min(1, c))));
           if (end <= NEON.a + 0.03) continue;
@@ -905,7 +972,7 @@ const HOOD = S.HOOD;
 // The relay row behind the window: six cream bobbins with black flanges, each with a chrome
 // typebar lever curling up to a cup, and a clear push-rod up to a rod of amber beads; red jewel
 // lamps at the ends; clear J-tubes down into finned glass stacks and a finned glass cylinder.
-const KEYROW = { xs: [-10.5, -6.3, -2.1, 2.1, 6.3, 10.5], z: 175.5, y: CH.front + 2.5, drum: 2.1, half: 1.3, flange: { r: 2.45, t: 0.6 }, cup: 180, rod: { z: 184, y: CH.front + 3, x: 13 }, beads: [-12.4, -9.4, -7.4, -5.2, -3.2, -0.75, 0.75, 3.2, 5.2, 7.4, 9.4, 12.4], lamps: 14.6, stacks: [0, 2, 3, 5] };
+const KEYROW = { xs: [-10.5, -6.3, -2.1, 2.1, 6.3, 10.5], z: 175.5, y: CH.front + 2.5, drum: 2.1, half: 1.3, flange: { r: 2.45, t: 0.6 }, cup: 180, rod: { z: 184, y: CH.front + 3, x: 13 }, beads: [-12.4, -9.4, -7.4, -5.2, -3.2, -0.75, 0.75, 3.2, 5.2, 7.4, 9.4, 12.4], lamps: 14.6, stacks: [0, 5], drops: [2, 3] };
 const hoodR = (z) => S.shellRadius(z) - 0.05;
 const capR = (z) => S.shellRadius(z) - 0.8;
 const HOOD_LOW = headFloor(0, S.REAR.y0) - 0.2;
@@ -976,7 +1043,7 @@ for (const side of [-1, 1]) {
   put("head", [side * 15.5, CH.front + 1.5, 180], Sv(convexPaths(loft(rings), P), { tone: "hi" }), { name: id, shapes: [shape] });
 }
 // Comb fins: thin plates standing out from each side of the hood, from the brim to the ears.
-const COMB = { z0: 168.8, pitch: 1.9, count: 8, out: 3.6, half: 0.9, thick: 0.4 };
+const COMB = { z0: 170, pitch: 2.2, count: 6, out: 3.4, half: 0.9, thick: 0.35 };
 for (const side of [-1, 1]) {
   for (let index = 0; index < COMB.count; index++) {
     const z = COMB.z0 + index * COMB.pitch;
@@ -1039,6 +1106,16 @@ for (const side of [-1, 1]) {
     const stack = k.solidSvg(G.disc(floor, top, 0.6, SF, P), { tone: "mid" }) + fins.join("") + k.solidSvg(G.disc(top, top + 0.6, 0.8, SF, P), { tone: "mid" });
     add([x, y, (floor + top) / 2], mat("clear", stack + tube));
   }
+  // Slim clear drop tubes from the two middle relays, down past the cylinder to the brim.
+  for (const index of K2.drops) {
+    const x = K2.xs[index];
+    const y = K2.y + K2.drum + 1;
+    const floor = brimTopZ(x, y);
+    const route = G.fillet([[x, K2.y + K2.drum - 0.4, K2.z - 0.9], [x, y, K2.z - 0.9], [x, y, floor + 0.6]], 0.9, 8, { P, tube: 0.3 });
+    const tube = tubePieces(route, 0.3, P, { maxLength: 400 }).map((part) => tubeSvg(part, { tone: "mid" })).join("");
+    const foot = k.solidSvg(G.disc(floor, floor + 0.6, 0.55, along([x, y, 0], [0, 0, 1]), P), { tone: "mid" });
+    add([x, y, (floor + K2.z) / 2], mat("clear", foot + tube));
+  }
   // A finned glass cylinder across the middle, fed from relays two and five.
   {
     const CF = along([-3.5, K2.y - 0.5, K2.z - 4.5], [1, 0, 0]);
@@ -1069,8 +1146,9 @@ for (const side of [-1, 1]) {
   const shape = record(A.solid(Fz(0, 0), turned(capR, HOOD.top, CH.top), { name: id, cut: [frontCut()] }));
   put("head", [0, 2, 196], `<g class="rb-inner">${Sv(convexPaths(loft(rings), P), { tone: "mid" })}</g>`, { name: id, shapes: [shape] });
   // The front details sit on the hood's flat front, seen through the window.
-  const face = film("head.keyface", [0, CH.front + 3.4, 178], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [10, 3.4, 13.8]);
-  const sides = [-1, 1].map((sign) => film("head.keyface", [sign * 13.4, CH.front + 2.2, 179], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [3.3, 2.2, 13.8]));
+  // Kept inside the glass and clear of the brim, whose slant rises toward the front.
+  const face = film("head.keyface", [0, CH.front + 2.75, 179.75], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [10, 2.75, 11.25]);
+  const sides = [-1, 1].map((sign) => film("head.keyface", [sign * 13.2, CH.front + 1.2, 174.25], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [3.1, 1.2, 5.75]));
   put("head", [0, CH.front + 2.5, 178], `<g class="rb-inner">${extra}</g>`, { name: "head.keyface", shapes: [face, ...sides], bias: 0.4 });
 }
 
@@ -1080,31 +1158,42 @@ for (const side of [-1, 1]) {
 // wire gyros on arms from knobs on the bell, turning in planetary fashion, so they read from
 // across the room.
 const TOWER = { z: CH.top, orbit: 7.2, gyroZ: CH.top + 5.6, gyroR: 4.5, lampZ: CH.top + 11.6, armRise: 30 };
+// The whole tower is one item, drawn bottom to top so each fin sits over the column below it
+// and under the column above it. The gyros orbit round it, so they are drawn live in two
+// layers: those behind the column before it, those in front after it.
 {
   const F = Fz(0, 0);
   const z0 = TOWER.z;
-  discOn("brain", F, z0, z0 + 0.4, 2.7, { tone: "mid", name: "brain.flange" });
-  turnedOn("brain", F, [[z0 + 0.4, 2.3], [z0 + 1.2, 2, 1], [z0 + 2.6, 1.55, 1], [z0 + 4, 1.6, 1], [z0 + 4.8, 1.75]], { tone: "hi", name: "brain.bell" });
-  discOn("brain", F, z0 + 4.8, TOWER.lampZ - 0.6, 1.1, { tone: "mid", name: "brain.shaft" });
-  // Heat-sink fins on the column, widest a third of the way down.
+  const owner = "brain.tower";
+  const parts = [];
+  const shapes = [];
+  const mat = (name, svg) => `<g class="rb-mat-${name}">${svg}</g>`;
+  const disc = (from, to, r, name, tone = "mid") => {
+    shapes.push(record(A.disc(F, from, to, r, { name, owner })));
+    parts.push(mat(name === "brain.bell" ? "brass" : "chrome", k.solidSvg(G.disc(from, to, r, F, P), { tone })));
+  };
+  disc(z0, z0 + 0.4, 2.7, "brain.flange");
+  // The bell: a trumpet foot narrowing to a waist, then a slight flare under the column.
+  const waist = z0 + 2.8;
+  const bellR = (z) => (z < waist ? 1.55 + 0.75 * ((waist - z) / (waist - z0 - 0.4)) ** 2 : 1.55 + 0.2 * ((z - waist) / (z0 + 4.8 - waist)) ** 2);
+  const bellSlope = (z) => (z < waist ? (-1.5 * (waist - z)) / (waist - z0 - 0.4) ** 2 : (0.4 * (z - waist)) / (z0 + 4.8 - waist) ** 2);
+  for (const [from, to] of [[z0 + 0.4, waist], [waist, z0 + 4.8]]) {
+    const profile = S.sampled({ radius: bellR }, from, to, 10);
+    shapes.push(record(A.solid(F, profile, { radius: bellR, name: "brain.bell", owner })));
+    parts.push(mat("brass", k.solidSvg(G.solidOf(profile, F, P, { smooth: { slope: bellSlope, radius: bellR } }), { tone: "hi" })));
+  }
+  // Heat-sink fins on the column, widest a third of the way down, with the column between them.
   const finR = [2.2, 2.6, 3.1, 2.9, 2.7, 2.6, 2.5, 2.4, 2.3, 2.2];
-  finR.forEach((r, index) => {
-    const zf = TOWER.lampZ - 1.2 - index * 0.55;
-    if (zf - 0.18 > z0 + 5) discOn("brain", F, zf - 0.18, zf, r, { tone: "hi", name: "brain.fin" });
-  });
-  discOn("brain", F, TOWER.lampZ - 0.6, TOWER.lampZ, 1.7, { tone: "mid", name: "brain.lamp-holder" });
-  // The gyros: recorded as balls with their arms; drawn live.
-  const shapes = [0, 1, 2].flatMap((index) => {
-    const a = (index * 2 * Math.PI) / 3;
-    const dir = [Math.cos(a), Math.sin(a), 0];
-    const c = [TOWER.orbit * dir[0], TOWER.orbit * dir[1], TOWER.gyroZ];
-    const knob = [1.75 * dir[0], 1.75 * dir[1], TOWER.gyroZ - 3];
-    const armF = G.frameAlong(knob, G.sub3(c, knob));
-    const reach = Math.hypot(...G.sub3(c, knob));
-    return [record(A.ball(c, TOWER.gyroR, { name: `brain.gyro#${index}` })), record(A.disc(armF, 0, reach - TOWER.gyroR + 0.2, 0.25, { name: `brain.gyro#${index}` }))];
-  });
-  put("brain", [0, 0, TOWER.gyroZ], `<g data-live="gyro"></g>`, { name: "brain.gyros", shapes, bias: 0.3 });
-  // The pilot lamp: a frosted bulb in a clear egg cage, one item since the cage holds the bulb.
+  const fins = finR.map((r, index) => ({ z: TOWER.lampZ - 1.2 - index * 0.55, r })).filter((fin) => fin.z - 0.18 > z0 + 5).reverse();
+  let at0 = z0 + 4.8;
+  for (const fin of fins) {
+    disc(at0, fin.z - 0.18, 1.1, "brain.shaft");
+    disc(fin.z - 0.18, fin.z, fin.r, "brain.fin", "hi");
+    at0 = fin.z;
+  }
+  disc(at0, TOWER.lampZ - 0.6, 1.1, "brain.shaft");
+  disc(TOWER.lampZ - 0.6, TOWER.lampZ, 1.7, "brain.lamp-holder");
+  // The pilot lamp: a frosted bulb in a clear egg cage.
   const bulb = [0, 0, TOWER.lampZ + 2.2];
   const egg = (sz) => {
     const t = (sz - TOWER.lampZ) / 5.4;
@@ -1123,8 +1212,19 @@ const TOWER = { z: CH.top, orbit: 7.2, gyroZ: CH.top + 5.6, gyroR: 4.5, lampZ: C
   const band = [];
   const zb = TOWER.lampZ + 2.1;
   for (let j = 0; j <= 48; j++) band.push([egg(zb) * Math.cos((j / 48) * Math.PI * 2), egg(zb) * Math.sin((j / 48) * Math.PI * 2), zb]);
-  const cage = record(A.ball([0, 0, TOWER.lampZ + 2.8], 2.75, { name: "brain.lamp" }));
-  put("brain", bulb, `<g data-live="pilot" class="rb-pilot">${Sv(G.sphereOf(bulb, 1.1, P), { tone: "hi" })}</g><path class="rb-cage" data-free="" d="${meridians.join("")}${path(band, true)}"/>`, { name: "brain.lamp", shapes: [cage], bias: 0.2 });
+  shapes.push(record(A.ball([0, 0, TOWER.lampZ + 2.8], 2.75, { name: "brain.lamp", owner })));
+  parts.push(`<g data-live="pilot" class="rb-pilot">${Sv(G.sphereOf(bulb, 1.1, P), { tone: "hi" })}</g><path class="rb-cage" data-free="" d="${meridians.join("")}${path(band, true)}"/>`);
+  // The gyros: recorded as balls with their arms.
+  for (let index = 0; index < 3; index++) {
+    const a = (index * 2 * Math.PI) / 3;
+    const dir = [Math.cos(a), Math.sin(a), 0];
+    const c = [TOWER.orbit * dir[0], TOWER.orbit * dir[1], TOWER.gyroZ];
+    const knob = [1.75 * dir[0], 1.75 * dir[1], TOWER.gyroZ - 3];
+    const armF = G.frameAlong(knob, G.sub3(c, knob));
+    const reach = Math.hypot(...G.sub3(c, knob));
+    shapes.push(record(A.ball(c, TOWER.gyroR, { name: "brain.gyro", owner })), record(A.disc(armF, 0, reach - TOWER.gyroR + 0.2, 0.25, { name: "brain.gyro", owner })));
+  }
+  put("brain", [0, 0, TOWER.gyroZ], `<g data-live="gyroBack"></g>${parts.join("")}<g data-live="gyroFront"></g>`, { name: owner, shapes, bias: 0.3 });
 }
 
 // ---------------------------------------------------------------- the clear shell and the ears
@@ -1199,10 +1299,10 @@ let shellShape;
 // ring on a short horizontal shaft and two open petals standing up in a V; the other has a ring
 // on an upright post and two swept blades pointing outward in a 30-degree V (the CAD's "30°").
 const EAR = { z: 187, ring: 4.5, tube: 0.65, root: 20.2, pod: { from: 21.2, wide: 24.5, to: 30.5, R: 3.5, r0: 3, tip: 0.9 }, collar: { r: 3.8, t: 1 } };
-const LANCET = [[0, 0], [1, -1.1], [3.4, -1.6], [5.6, -1], [7.5, 0], [5.6, 1], [3.4, 1.6], [1, 1.1]];
-// A swept tail fin, like a 1958 car's: a broad root, a straight leading edge raking back to a
-// point, and a trailing edge that sweeps in under it.
-const BLADE = [[0, -1.2], [0, 1.5], [2.6, 1.7], [8.6, 0.35], [9.2, 0], [6.4, -0.45], [3, -0.95]];
+const LANCET = [[0, 0], [0.8, -1.2], [2.8, -1.45], [4.8, -1.15], [5.8, -0.5], [6.1, 0], [5.8, 0.5], [4.8, 1.15], [2.8, 1.45], [0.8, 1.2]];
+// A swept fin: a broad root, a leading edge raking back to a rounded tip, and a trailing edge
+// that sweeps in under it.
+const BLADE = [[0, -1.4], [0, 1.6], [2.5, 1.9], [5.6, 1.4], [6.6, 0.6], [6.8, 0], [6.4, -0.7], [3.2, -1.3]];
 const EARS = {};
 function clearFin(piece, F, poly, thick, host, name, inner = "") {
   const id = nameFor(name);
@@ -1225,7 +1325,7 @@ for (const side of [-1, 1]) {
   put("head", G.add3(lensAt, [0, 3.7, 0]), `<g class="rb-mat-clear">${Sv(G.disc(2.7, 3.7, 2.1, FL, P), { tone: "hi" })}</g><path class="rb-eye" data-live="eye${tag}" d="${G.circleOf(FL, 3.7, 0.6, P)}"/>`, { name: `head.eye${tag}`, shapes: [lens], bias: 0.3 });
   if (side < 0) {
     // Petals standing up in a V behind the lens, one leaning out, one nearly upright.
-    for (const [x, y, lean] of [[25.5, 0.6, 25], [26.6, -1.2, -5]]) {
+    for (const [x, y, lean] of [[25.5, 0.6, 14], [26.6, -1.2, -2]]) {
       const up = [side * Math.sin(lean * DEG), 0, Math.cos(lean * DEG)];
       const FF = G.frameOf([side * x, y, EAR.z + 1.2], [0, 1, 0], up, G.cross3([0, 1, 0], up));
       const innerPoly = LANCET.map(([u, v]) => [1.2 + (u - 1.2) * 0.62 + 0.4, v * 0.5]);
@@ -1243,7 +1343,7 @@ for (const side of [-1, 1]) {
       // Mirrored so both leading edges face out of the V.
       const flip = tilt > 0 ? 1 : -1;
       const FF = G.frameOf([side * 28.4, y, EAR.z], [0, 1, 0], out, G.mul3(G.cross3([0, 1, 0], out), flip * side));
-      const innerPoly = BLADE.map(([u, v]) => [1.1 + u * 0.72, v * 0.5]);
+      const innerPoly = BLADE.map(([u, v]) => [0.9 + u * 0.7, v * 0.5]);
       clearFin("head", FF, BLADE, 0.3, hub, `head.ear${tag}-fin`, Ln(k.pathOf(innerPoly.map(([u, v]) => at(G.add3(FF.o, G.add3(G.add3(G.mul3(FF.u, u), G.mul3(FF.v, v)), G.mul3(FF.a, 0.16))))), true), { tone: "mid" }));
     }
     // An upright post from the top of the pod, a clamp block, and the ring standing on it.
@@ -1288,7 +1388,7 @@ for (const which of ["L", "R"]) {
     slab("stand", { x: x - 2.4, y: y - 2.4, w: 4.8, d: 4.8, r: 0.8 }, CAB_Z0 - 0.6, 0.6, { tone: "mid", steps: 3, bevel: 0, name: "stand.caster-plate" });
   }
   // Two-tone, like a 1955 appliance: a dark base band with chrome louvres, the cabinet in
-  // turquoise enamel with a chrome spear down its side, and an ivory sloped top.
+  // turquoise enamel, and an ivory sloped top.
   const BASE = 9;
   const front = C.y + C.d;
   const f = (x, z) => at([x, front, z]);
@@ -1309,12 +1409,7 @@ for (const which of ["L", "R"]) {
     const y = C.y + 8 + index * 6;
     vents.push(k.pathOf(roundRect(y, CAB_TOP - 24, y + 1.2, CAB_TOP - 8, 0.6, 2).map(([yy, z]) => at([side, yy, z])), true));
   }
-  // The spear: a chrome strip along the side, sweeping down over its last 12 cm.
-  const zs = z0 + 40;
-  const spearAt = (y, dz) => at([side, y, zs + dz - (y < C.y + 14 ? 8 * Math.sin(((C.y + 14 - y) / 12) * (Math.PI / 2)) ** 2 : 0)]);
-  const ys = Array.from({ length: 25 }, (_, i) => front - 2 - ((front - 2 - (C.y + 2)) * i) / 24);
-  const spear = k.pathOf([...ys.map((y) => spearAt(y, 0.6)), ...[...ys].reverse().map((y) => spearAt(y, -0.6))], true);
-  const extra = Ln(k.pathOf(door, true), { tone: "lo" }) + Ln(k.pathOf(plate, true), { tone: "lo" }) + Ln(rules, { tone: "lo", free: true }) + Dots(screws, { size: 0.45 }) + Ln(vents.join(""), { tone: "lo" }) + `<path class="rb-spear" d="${spear}"/>`;
+  const extra = Ln(k.pathOf(door, true), { tone: "lo" }) + Ln(k.pathOf(plate, true), { tone: "lo" }) + Ln(rules, { tone: "lo", free: true }) + Dots(screws, { size: 0.45 }) + Ln(vents.join(""), { tone: "lo" });
   slab("stand", C, z0, CAB_TOP - z0, { tone: "mid", steps: 4, bevel: 0.8, name: "stand.console", extra });
   slab("stand", { x: C.x + C.w / 2 - 5, y: front, w: 10, d: 1.4, r: 0.5 }, CAB_TOP - 23, 1.6, { tone: "hi", steps: 2, bevel: 0.2, name: "stand.console-handle" });
   const F = G.frameOf([C.x, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]);
@@ -1436,11 +1531,11 @@ const MATERIALS = [
   [/^stand\./, "cream"],
   [/^dome\.shell/, ""],
   [/^head\.(chassis|keyface)/, ""],
-  [/^brain\.lamp\b/, ""],
-  [/^(head\.ear[LR]-(ring|shaft|post|clamp)|head\.eye|head\.comb-fin|chest\.(star|quad)-bezel|brain\.(shaft|carrier|flange|lamp-holder|gyro|fin)|pelvis\.hip-(bolt|washer)|legs\.connector)/, "chrome"],
+  [/^brain\.tower/, ""],
+  [/^(head\.ear[LR]-(ring|shaft|post|clamp)|head\.eye|chest\.(star|quad)-bezel|pelvis\.hip-(bolt|washer)|legs\.connector)/, "chrome"],
   [/^(brain\.bell|core\.)/, "brass"],
-  [/^arm[LR]\.(palm|finger|cuff)/, "rubber"],
-  [/^head\.ear[LR]-fin/, "clear"],
+  [/^arm[LR]\.(hand|palm|finger|cuff)/, "rubber"],
+  [/^head\.(ear[LR]-fin|comb-fin)/, "clear"],
   [/./, "gunmetal"],
 ];
 const materialOf = (name) => MATERIALS.find(([pattern]) => pattern.test(name))[1];

@@ -778,6 +778,8 @@
   stroke-width: 0.5;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
+}
+[data-live="star"] {
   filter: drop-shadow(0 0 2px var(--rb-star-glow));
   animation: rb-star-breathe 2.4s ease-in-out infinite;
 }
@@ -787,7 +789,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .rb-star {
+  [data-live="star"] {
     animation: none;
   }
 }
@@ -802,12 +804,22 @@
   filter: drop-shadow(0 0 2px #ffb347);
 }
 /* The panel's recessed interior and the bead chain round its frame. */
-.rb-recess {
+.rb-panel-recess {
   fill: var(--rb-recess);
 }
-/* The console's chrome trim: louvres on the base band and the spear down its side. */
-.rb-louvre,
-.rb-spear {
+/* The shoulder sockets: a dark gap round each ball with a thin lit rim. */
+.rb-socket {
+  fill: var(--rb-slot);
+}
+.rb-socket-rim {
+  fill: none;
+  stroke: var(--rb-bead);
+  stroke-width: 0.6;
+  stroke-opacity: 0.45;
+  vector-effect: non-scaling-stroke;
+}
+/* The console's chrome louvres on its base band. */
+.rb-louvre {
   fill: var(--rb-ch-3);
   stroke: var(--rb-chrome-line);
   stroke-width: 0.4;
@@ -855,8 +867,8 @@
 }
 .rb-gyro-arm {
   fill: none;
-  stroke: #efe6cf;
-  stroke-width: 1.6;
+  stroke: #9a7a3a;
+  stroke-width: 0.9;
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
 }
@@ -913,7 +925,6 @@
   stroke: var(--anatomy-lit-top);
 }
 
-/* Controls under the drawing. */
 /* The controls ride above the drawing and stay in reach while it is on screen: a strip of
    1950s push-buttons, each with its own jewel lamp. */
 .rb-controls {
@@ -1052,6 +1063,20 @@
   }
   .rb-hint {
     display: none;
+  }
+  /* On a phone the strip stays in the flow, in two tight rows, so it never covers the figure. */
+  .rb-controls {
+    position: static;
+    gap: 6px;
+    padding: 8px;
+  }
+  .rb-act,
+  .rb-select {
+    min-height: 30px;
+    padding: 0 9px 0 8px;
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    gap: 6px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

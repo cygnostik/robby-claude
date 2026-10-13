@@ -10,12 +10,12 @@ export const HEADER = `
 <header class="pg-head">
   <p class="pg-eyebrow">Anatomy · <i>Forbidden Planet</i>, MGM 1956</p>
   <h1 class="pg-title"><span class="pg-title-name">Robby</span> <span class="pg-title-hand">the Robot</span></h1>
-  <p class="pg-dek">How the machine works, twice over. MGM built him in 1955 as a three-piece suit with a stuntman inside and a cable running out of his heel. On screen he is Dr. Morbius's servant on Altair IV, with a chemical laboratory in his belly and an inhibition that no order can override. This page draws both, and tags every claim by where it comes from.</p>
 </header>`;
 
 // The numbers and the source key, read after the figure.
 export const FACTS = `
 <section class="pg-facts" aria-label="Robby in numbers">
+  <p class="pg-dek">How the machine works, twice over. MGM built him in 1955 as a three-piece suit with a stuntman inside and a cable running out of his heel. On screen he is Dr. Morbius's servant on Altair IV, with a chemical laboratory in his belly and an inhibition that no order can override. This page draws both, and tags every claim by where it comes from.</p>
   <dl class="pg-stats">
     <div><dt>Height</dt><dd>214<small> cm</small></dd><span>just over 7 ft${cite(3)}</span></div>
     <div><dt>Suit</dt><dd>45–54<small> kg</small></dd><span>100–120 lb, carried on a shoulder harness${cite(4, 10)}</span></div>
@@ -176,7 +176,7 @@ const specs = [
   ["Sections", "three: legs and lower torso; barrel chest with arms; head", [3]],
   ["Materials", "Royalite ABS, vacuum-formed; Plexiglas dome; rubber hands; aluminium; acetate; wood", [3, 10, 11]],
   ["Head", "black hood with a clear Plexiglas cap and front window: pilot lamp, three wire gyros, six relay keys with sax-key levers, two blinking eyes on the ear hubs, two rotating ear rings, comb fins, blue neon mouth", [3, 15]],
-  ["Shell", "17.34 in across, about 21 in tall; brim 4.45 in above the chest at the back, 7.19 in at the front; brim R 10.67 in", [15]],
+  ["Shell", "17.34 in across, about 21 in tall; brim 4.45 in above the chest at the back, 7.19 in at the front", [15]],
   ["Neck", "custom bearing; head turns either way", [3]],
   ["Chest", "barrel 16.5 in tall; sample door, two rotating discs, four moving buttons (Wikipedia: five)", [3, 15]],
   ["Legs", "42.24 in to the chest; globes R 6.00, 5.60, 6.00 in; shoes 15.71 × 11.17 in", [15]],

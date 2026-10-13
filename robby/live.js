@@ -131,7 +131,8 @@ const moving = () => IDS.some((id) => Math.abs(spring[id].x - spring[id].target)
 
 // ---------------------------------------------------------------- the moving parts, rebuilt each frame
 const parts = {
-  gyro: q("gyro"),
+  gyroBack: q("gyroBack"),
+  gyroFront: q("gyroFront"),
   earL: q("earL"),
   earR: q("earR"),
   pilot: q("pilot"),
@@ -178,24 +179,26 @@ const on = (el, flag) => write(el, "data-on", flag ? "" : null);
 
 // Three ivory wire gyros, each a disc of concentric rings crossed by two hoops, riding on an arm
 // from a knob on the bell that passes through it as an axle; each spins about its arm while
-// the carrier turns them round the bell. Drawn back to front.
+// the carrier turns them round the bell. Drawn back to front, in two layers: those behind the
+// column go under it, those in front over it.
 function gyroSvg(spin, orbit, arcs) {
-  const out = [];
+  const layers = { back: [], front: [] };
   const T = D.tower;
   const V = D.V;
   const order = [0, 1, 2].map((index) => {
     const a = orbit + (index * TAU) / 3;
     return { index, a, depth: T.orbit * (Math.cos(a) * V[0] + Math.sin(a) * V[1]) };
   }).sort((p, q) => p.depth - q.depth);
-  for (const { index, a } of order) {
+  for (const { index, a, depth } of order) {
+    const out = depth < 0 ? layers.back : layers.front;
     const dir = [Math.cos(a), Math.sin(a), 0];
     const c = [T.orbit * dir[0], T.orbit * dir[1], T.gyroZ];
     const knob = [1.75 * dir[0], 1.75 * dir[1], T.gyroZ - 3];
     const axle = G.unit3(G.sub3(c, knob));
-    const far = add(c, mul(axle, T.gyroR));
+    const rim = add(c, mul(axle, -T.gyroR));
     const kF = G.frameAlong(knob, axle);
-    out.push(K.solidSvg(G.disc(-0.5, 0.8, 0.85, kF, P), { tone: "mid" }));
-    out.push(`<path class="rb-gyro-arm" d="${line([knob, far])}"/>`);
+    out.push(K.solidSvg(G.disc(-0.5, 0.6, 0.5, kF, P), { tone: "mid" }));
+    out.push(`<path class="rb-gyro-arm" d="${line([knob, rim])}"/>`);
     const centre = iso(c);
     out.push(`<circle class="rb-gyro-body" cx="${centre[0].toFixed(2)}" cy="${centre[1].toFixed(2)}" r="${(T.gyroR * D.KS).toFixed(2)}"/>`);
     const F0 = G.frameAlong(c, axle);
@@ -236,9 +239,9 @@ function gyroSvg(spin, orbit, arcs) {
       }
       bolts.push(line(points));
     }
-    if (bolts.length) out.push(`<path class="rb-arc" d="${bolts.join("")}"/>`);
+    if (bolts.length) layers.front.push(`<path class="rb-arc" d="${bolts.join("")}"/>`);
   }
-  return out.join("");
+  return { back: layers.back.join(""), front: layers.front.join("") };
 }
 
 function earSvg(ear, angle) {
@@ -373,6 +376,7 @@ function start(mode, fromTour = false) {
   act.mode = mode;
   act.t = 0;
   act.armedFor = null;
+  act.fromTour = fromTour;
   if (mode === "speak") {
     act.speech = speechTrack(LINES[act.line % LINES.length], 0);
     act.line++;
@@ -384,7 +388,7 @@ function start(mode, fromTour = false) {
     announce("synthesizing " + recipeSelect.selectedOptions[0].textContent);
   }
   if (mode === "harm") announce("order to fire on a man");
-  if (mode === "scan") announce("radar scan");
+  if (mode === "scan") announce("scan");
   for (const [name, button] of Object.entries(actButtons)) if (name !== "apart") button.dataset.state = name === mode ? "on" : "";
   run();
 }
@@ -583,8 +587,15 @@ function draw(s, dt, calm) {
   const speed = calm ? 0 : 1;
   spin += dt * s.spin * speed;
   orbit += dt * s.orbit * speed;
-  ear.L += dt * (s.jitter ? 9 : 3.4 + scanUp.x * 9) * speed;
-  ear.R -= dt * (s.jitter ? 7 : 2.6 + scanUp.x * 8) * speed;
+  // The ear rings rest upright, facing front, and spin only while he scans or fights an order.
+  const earRate = s.jitter ? 8 : 9 * scanUp.x;
+  for (const [side, sign] of [["L", 1], ["R", -1]]) {
+    if (earRate > 0.2) ear[side] += sign * dt * earRate * speed;
+    else {
+      const rest = Math.round(ear[side] / Math.PI) * Math.PI;
+      ear[side] += (rest - ear[side]) * Math.min(1, dt * 4);
+    }
+  }
   drumPhase += dt * s.drum * 2.4 * speed;
   star += dt * 0.35 * speed;
   quad = calm ? -1 : Math.floor(clock * (s.drum || s.voice || s.rocker ? 6 : 1.6)) % 4;
@@ -593,7 +604,9 @@ function draw(s, dt, calm) {
   settleTo(doorAngle, s.door, dt, 0.18, calm);
   settleTo(scanUp, s.scan, dt, 0.35, calm);
 
-  html(parts.gyro, gyroSvg(spin, orbit, calm ? 0 : s.arcs));
+  const gyros = gyroSvg(spin, orbit, calm ? 0 : s.arcs);
+  html(parts.gyroBack, gyros.back);
+  html(parts.gyroFront, gyros.front);
   html(parts.earL, earSvg(D.ears.L, ear.L));
   html(parts.earR, earSvg(D.ears.R, ear.R));
   html(parts.door, doorSvg(doorAngle.x));
@@ -613,10 +626,7 @@ function draw(s, dt, calm) {
     on(tube, pick && s.tubes > 0.06);
     if (pick) tube.style.setProperty("--glow", clamp(s.tubes * 1.1, 0.25, 1).toFixed(2));
   });
-  parts.rockers.forEach((rocker, index) => {
-    const dz = index === s.rockerOn ? 0.9 : 0;
-    write(rocker, "transform", dz ? K.translateAlong(P, [0, 0, dz]) : null);
-  });
+  parts.rockers.forEach((rocker, index) => write(rocker, "transform", index === s.rockerOn ? strike(index) : null));
   parts.keys.forEach((key, index) => {
     const out = calm ? 0 : 0.35 * (0.5 + 0.5 * Math.sin(keyPhase * 2.3 + index * 1.3)) * (s.drum || s.voice ? 1.6 : 1);
     write(key, "transform", out > 0.02 ? K.translateAlong(P, [0, out, 0]) : null);
@@ -627,6 +637,27 @@ function draw(s, dt, calm) {
   parts.inds.forEach((lamp, index) => on(lamp, calm ? index % 2 === 0 : index === lead || index === (lead + 3) % parts.inds.length));
   const latched = Math.round(s.latched * parts.leds.length);
   parts.leds.forEach((led, index) => on(led, index < latched));
+}
+
+// A typebar strike: the lever, its cup and push rod turn together 10 degrees forward about the
+// relay's drum axis, like a typewriter's typebar. They all lie in one plane across the head, so
+// the turn is one affine map on screen.
+function strike(index) {
+  const R = D.keyrow;
+  const o = iso([R.xs[index], R.y, R.z]);
+  const ey = iso([R.xs[index], R.y + 1, R.z]).map((v, i) => v - o[i]);
+  const ez = iso([R.xs[index], R.y, R.z + 1]).map((v, i) => v - o[i]);
+  const a = (-10 * Math.PI) / 180;
+  const [c, n] = [Math.cos(a), Math.sin(a)];
+  // M = B·R·B⁻¹ with B = [ey ez].
+  const det = ey[0] * ez[1] - ez[0] * ey[1];
+  const inv = [ez[1] / det, -ez[0] / det, -ey[1] / det, ey[0] / det];
+  const r = [c, n, -n, c];
+  const br = [ey[0] * r[0] + ez[0] * r[1], ey[1] * r[0] + ez[1] * r[1], ey[0] * r[2] + ez[0] * r[3], ey[1] * r[2] + ez[1] * r[3]];
+  const m = [br[0] * inv[0] + br[2] * inv[1], br[1] * inv[0] + br[3] * inv[1], br[0] * inv[2] + br[2] * inv[3], br[1] * inv[2] + br[3] * inv[3]];
+  const e = o[0] - (m[0] * o[0] + m[2] * o[1]);
+  const f = o[1] - (m[1] * o[0] + m[3] * o[1]);
+  return `matrix(${m.map((v) => v.toFixed(4)).join(" ")} ${e.toFixed(2)} ${f.toFixed(2)})`;
 }
 
 function idleText() {
@@ -676,6 +707,8 @@ function pieceAt(event) {
 // clicking that assembly again, or the stand or the empty plate, puts him back together.
 stage.addEventListener("click", (event) => {
   quietTour();
+  // A behaviour from the opening show gives way at once; one the reader started runs on.
+  if (act.mode !== "idle" && act.fromTour) finish("");
   if (act.mode !== "idle") return;
   const id = pieceAt(event);
   const part = id && id !== "stand" ? (GROUP[id] ?? id) : null;
@@ -707,8 +740,9 @@ for (const [name, button] of Object.entries(actButtons)) {
 // same part again puts him back together.
 partButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    if (act.mode !== "idle") return;
     quietTour();
+    if (act.mode !== "idle" && act.fromTour) finish("");
+    if (act.mode !== "idle") return;
     if (apart && selected === button.dataset.part) {
       select(null);
       setApart(false);

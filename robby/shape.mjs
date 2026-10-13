@@ -141,7 +141,8 @@ const unit = (v) => {
   const l = Math.hypot(...v);
   return v.map((c) => c / l);
 };
-export const COLLAR = { r: 21, z0: 150 };
+// The collar stands on the chest bearing plate, so the head turns on it.
+export const COLLAR = { r: 21, z0: 151 };
 export const SLANT = { o: 155.5, k: 0.545 };
 export const slantZ = (y) => SLANT.o + SLANT.k * y;
 export const SLANT_TILT = Math.atan(SLANT.k);
