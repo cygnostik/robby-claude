@@ -1264,6 +1264,22 @@ let shellShape;
     for (let i = 0; i <= 16; i++) pane.push(at(onShell(az, foot + ((HOOD.top - foot) * i) / 16)));
   }
   const clip = k.pathOf(G.hullOf(cap), true) + k.pathOf(G.hullOf(pane), true);
+  // The front window, exactly: its top arc, down one edge, along the brim, up the other. Its
+  // plastic keeps the original's tint, so the lamps behind it read as they always have, while
+  // the cap above stays clear for the gyros.
+  const [w0, w1] = [-HOOD.window, HOOD.window];
+  const windowEdge = [];
+  for (let j = 0; j <= 32; j++) windowEdge.push(at(onShell(w0 + ((w1 - w0) * j) / 32, HOOD.top)));
+  const f1 = footOf(w1);
+  for (let i = 1; i < 16; i++) windowEdge.push(at(onShell(w1, HOOD.top - ((HOOD.top - f1) * i) / 16)));
+  for (let j = 32; j >= 0; j--) {
+    const az = w0 + ((w1 - w0) * j) / 32;
+    windowEdge.push(at(onShell(az, footOf(az))));
+  }
+  const f0 = footOf(w0);
+  for (let i = 1; i < 16; i++) windowEdge.push(at(onShell(w0, f0 + ((HOOD.top - f0) * i) / 16)));
+  const capClip = k.pathOf(G.hullOf(cap), true);
+  const windowClip = k.pathOf(windowEdge, true);
   const shine = [];
   for (let j = 0; j <= 18; j++) {
     const z = 174 + (j * 30) / 18;
@@ -1292,7 +1308,9 @@ let shellShape;
   })();
   const glintAz = Math.atan2(G.dot3(HV, F.v), G.dot3(HV, F.u));
   const glintAt = at(G.add3([0, 0, peakZ], G.add3(G.mul3(F.u, S.shellRadius(peakZ) * Math.cos(glintAz)), G.mul3(F.v, S.shellRadius(peakZ) * Math.sin(glintAz)))));
-  put("dome", [0, 0, 196], `<clipPath id="rb-shell"><path d="${clip}"/></clipPath><g class="rb-glass" clip-path="url(#rb-shell)">${Sv(paths, { tone: "hi" })}${glint}<path class="rb-glass-edge" d="${paths.outline}"/><path class="rb-glass-hair" d="${paths.outline}"/></g>` + k.fadeLineSvg(shine, { fade: [10, 10], tone: "mid", className: "rb-shine" }) + sparkle(glintAt, 9), { name: "dome.shell", shapes: [shellShape], bias: 2 });
+  const glass = Sv(paths, { tone: "hi" });
+  const clips = `<clipPath id="rb-shell"><path d="${clip}"/></clipPath><clipPath id="rb-shell-cap"><path d="${capClip}"/></clipPath><clipPath id="rb-shell-window"><path d="${windowClip}"/></clipPath>`;
+  put("dome", [0, 0, 196], `${clips}<g class="rb-glass"><g clip-path="url(#rb-shell-cap)">${glass}</g><g class="rb-glass-window" clip-path="url(#rb-shell-window)">${glass}</g><g clip-path="url(#rb-shell)">${glint}<path class="rb-glass-edge" d="${paths.outline}"/><path class="rb-glass-hair" d="${paths.outline}"/></g></g>` + k.fadeLineSvg(shine, { fade: [10, 10], tone: "mid", className: "rb-shine" }) + sparkle(glintAt, 9), { name: "dome.shell", shapes: [shellShape], bias: 2 });
 }
 // Ears: a bullet pod out of each side of the hood, with a collar at its root and a lens on its
 // front for the eye lamp, carrying clear acrylic fins and a rotating chrome ring. One ear has a
