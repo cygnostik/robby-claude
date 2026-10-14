@@ -5,9 +5,8 @@
   --rb-neon-core: #e8f2ff;
   --rb-neon-off: #1d2a3c;
   --rb-neon-glow: #4f8dff;
-  --rb-neon-glow-o: 0.28;
   --rb-red: #ff5a52;
-  --rb-red-off: #6a2420;
+  --rb-red-off: #3a1f1e;
   --rb-amber: #ffd48a;
   --rb-amber-off: #3b3326;
   --rb-eye: #9fd0ff;
@@ -48,7 +47,7 @@
   --rb-key-pressed: inset 0 2px 3px rgba(0, 0, 0, 0.4), 0 0 0 1px #22304b;
   --rb-jewel-blue: #7fb6ff;
   --rb-jewel-amber: #ffd48a;
-  --rb-jewel-red: #ff6b5e;
+  --rb-jewel-red: #ff5a52;
   --rb-jewel-green: #7fe0b0;
   --rb-part-ring: #ffffff10;
   --rb-part-hover: #ffffff0a;
@@ -121,12 +120,11 @@
 /* Light values; page.mjs applies them under the viewer's light theme. */
 .rb-light-tokens {
   --rb-neon: #2f6fe0;
-  --rb-neon-core: #eaf2ff;
+  --rb-neon-core: #1b4fb8;
   --rb-neon-off: #c9d6ea;
-  --rb-neon-glow: #2f6fe0;
-  --rb-neon-glow-o: 0.45;
+  --rb-neon-glow: #6f9cf0;
   --rb-red: #d9362e;
-  --rb-red-off: #b8322a;
+  --rb-red-off: #ecc9c6;
   --rb-amber: #c98a12;
   --rb-amber-off: #e7dcc4;
   --rb-eye: #2c7fd1;
@@ -407,13 +405,15 @@
   stroke-width: 0.5;
   vector-effect: non-scaling-stroke;
 }
-.rb-bead[data-on] .iso-fill,
-.rb-bead[data-on] .iso-shade,
-.rb-bead[data-on] .iso-top {
-  fill: #ffd27a;
+/* Lit beads chase in amber, blue and red, the indicator colours of the speech light show. */
+.rb-bead[data-on]:is([data-ind="0"], [data-ind="3"], [data-ind="6"], [data-ind="9"]) :is(.iso-fill, .iso-shade, .iso-top) {
+  fill: var(--rb-amber);
 }
-.rb-bead[data-on] {
-  filter: drop-shadow(0 0 1.6px #ffb340);
+.rb-bead[data-on]:is([data-ind="1"], [data-ind="4"], [data-ind="7"], [data-ind="10"]) :is(.iso-fill, .iso-shade, .iso-top) {
+  fill: var(--rb-neon);
+}
+.rb-bead[data-on]:is([data-ind="2"], [data-ind="5"], [data-ind="8"], [data-ind="11"]) :is(.iso-fill, .iso-shade, .iso-top) {
+  fill: var(--rb-red);
 }
 .rb-jewel .iso-fill,
 .rb-jewel .iso-shade,
@@ -428,7 +428,7 @@
   stroke: var(--rb-red);
 }
 .rb-jewel[data-on] {
-  filter: drop-shadow(0 0 3px var(--rb-red));
+  filter: drop-shadow(0 0 2px var(--rb-red));
 }
 
 /* ---- Gloss: layered fills, softest outside, so no filters are needed while parts move. */
@@ -678,21 +678,8 @@
   vector-effect: non-scaling-stroke;
 }
 .rb-tube[data-on] .rb-neon {
-  stroke: color-mix(in srgb, var(--rb-neon-core) calc(var(--glow, 1) * 100%), var(--rb-neon-off));
-  stroke-width: 1.1;
-}
-/* The glow is a wide soft stroke under the tube, not a filter, so it costs nothing to animate. */
-.rb-neon-glow {
-  fill: none;
-  stroke: var(--rb-neon-glow);
-  stroke-linecap: round;
-  stroke-width: 0;
-  opacity: 0;
-  vector-effect: non-scaling-stroke;
-}
-.rb-tube[data-on] .rb-neon-glow {
-  stroke-width: calc(1.15px + 4px * var(--glow, 1));
-  opacity: calc(var(--rb-neon-glow-o) * var(--glow, 1));
+  stroke: color-mix(in srgb, var(--rb-neon) calc(var(--glow, 1) * 100%), var(--rb-neon-off));
+  filter: drop-shadow(0 0 calc(var(--glow, 1) * 2.4px) var(--rb-neon-glow));
 }
 
 .rb-lamp {
@@ -989,6 +976,9 @@
 .rb-act[aria-pressed="true"] .rb-act-lamp {
   background: var(--lamp);
   box-shadow: 0 0 8px 1px var(--lamp);
+}
+.rb-act[data-act="speak"][data-state="on"] .rb-act-lamp {
+  box-shadow: 0 0 8px 1px var(--rb-neon-glow);
 }
 .rb-select {
   min-height: 34px;

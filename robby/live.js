@@ -598,7 +598,8 @@ function draw(s, dt, calm) {
   }
   drumPhase += dt * s.drum * 2.4 * speed;
   star += dt * 0.35 * speed;
-  quad = calm ? -1 : Math.floor(clock * (s.drum || s.voice || s.rocker ? 6 : 1.6)) % 4;
+  // The quad rivets keep their own slow pace, so speech keeps its own light show.
+  quad = calm ? -1 : Math.floor(clock * 1.6) % 4;
   keyPhase += dt * speed;
   settleTo(needle, s.voice, dt, 0.06, calm);
   settleTo(doorAngle, s.door, dt, 0.18, calm);

@@ -912,7 +912,7 @@ const SPLIT = Math.acos(S.REAR.y0 / S.COLLAR.r);
         const points = [];
         for (let j = 0; j <= 30; j++) points.push(onCollar(-limit + (2 * limit * j) / 30, z, R + 0.05));
         const d = path(points);
-        tubes.push(`<g class="rb-tube" data-tube="${index++}"><path class="rb-neon-glow" d="${d}"/><path class="rb-neon" d="${d}"/></g>`);
+        tubes.push(`<g class="rb-tube" data-tube="${index++}"><path class="rb-neon" d="${d}"/></g>`);
       }
       const frame = [];
       for (const t of [-NEON.a, 0, NEON.a]) frame.push(path([onCollar(t, S.COLLAR.z0, R + 0.05), onCollar(t, collarTop(t), R + 0.05)]));
