@@ -1264,12 +1264,13 @@ let shellShape;
     for (let i = 0; i <= 16; i++) pane.push(at(onShell(az, foot + ((HOOD.top - foot) * i) / 16)));
   }
   const clip = k.pathOf(G.hullOf(cap), true) + k.pathOf(G.hullOf(pane), true);
-  // The front window, exactly: its top arc, down one edge, along the brim, up the other. Its
-  // plastic keeps the original's tint, so the lamps behind it read as they always have, while
-  // the cap above stays clear for the gyros.
+  // The front window keeps the original plastic's tint, so the lamps behind it read as they
+  // always have, while the cap above stays clear for the gyros. The two tints meet along the
+  // straight top edge of the hood's flat front, where the drawing already has an edge: across
+  // the top, down one window edge, along the brim, up the other.
   const [w0, w1] = [-HOOD.window, HOOD.window];
-  const windowEdge = [];
-  for (let j = 0; j <= 32; j++) windowEdge.push(at(onShell(w0 + ((w1 - w0) * j) / 32, HOOD.top)));
+  const corners = [at(onShell(w0, HOOD.top)), at(onShell(w1, HOOD.top))];
+  const windowEdge = [corners[0], corners[1]];
   const f1 = footOf(w1);
   for (let i = 1; i < 16; i++) windowEdge.push(at(onShell(w1, HOOD.top - ((HOOD.top - f1) * i) / 16)));
   for (let j = 32; j >= 0; j--) {
@@ -1278,7 +1279,10 @@ let shellShape;
   }
   const f0 = footOf(w0);
   for (let i = 1; i < 16; i++) windowEdge.push(at(onShell(w0, f0 + ((HOOD.top - f0) * i) / 16)));
-  const capClip = k.pathOf(G.hullOf(cap), true);
+  // The cap, less what lies below that straight line between the window's top corners.
+  const [[ax, ay], [bx, by]] = corners;
+  const below = ([x, y]) => x > Math.min(ax, bx) && x < Math.max(ax, bx) && y > ay + ((by - ay) * (x - ax)) / (bx - ax);
+  const capClip = k.pathOf(G.hullOf([...cap.filter((p) => !below(p)), ...corners]), true);
   const windowClip = k.pathOf(windowEdge, true);
   const shine = [];
   for (let j = 0; j <= 18; j++) {
