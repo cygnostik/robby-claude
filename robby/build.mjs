@@ -1602,7 +1602,7 @@ const LABEL =
 
 // The backdrop, after 1950s space painting (Bonestell, the Forbidden Planet one-sheet): a sky
 // graded to a low horizon behind his knees, flat-topped mesas kept close to the sky's own
-// value, Altair IV lit from one side with hairline rings, a moon, stars by night, a halo behind
+// value and blurred, more across than up, into a band of smog so they read as far away, Altair IV lit from one side with hairline rings, a moon, stars by night, a halo behind
 // the dome so the gyros read, and a few glints. Behind everything, and it never moves.
 {
   const head = at([0, 0, 200]);
@@ -1669,6 +1669,10 @@ const LABEL =
 <radialGradient id="rb-planet" cx="32%" cy="30%" r="80%"><stop offset="0" class="rb-planet-a"/><stop offset="0.55" class="rb-planet-b"/><stop offset="1" class="rb-planet-c"/></radialGradient>
 <radialGradient id="rb-halo"><stop offset="0" class="rb-halo-0"/><stop offset="1" class="rb-halo-1"/></radialGradient>
 <filter id="rb-terminator" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="9"/></filter>
+<filter id="rb-haze" filterUnits="userSpaceOnUse" x="-300" y="0" width="${W + 600}" height="${H}"><feGaussianBlur stdDeviation="14 7"/></filter>
+<filter id="rb-smog-far" filterUnits="userSpaceOnUse" x="-200" y="${hy - 160}" width="${W + 400}" height="320"><feGaussianBlur stdDeviation="16 6"/></filter>
+<filter id="rb-smog-near" filterUnits="userSpaceOnUse" x="-200" y="${hy - 160}" width="${W + 400}" height="320"><feGaussianBlur stdDeviation="10 4"/></filter>
+<linearGradient id="rb-smog" gradientUnits="userSpaceOnUse" x1="0" y1="${hy - 90}" x2="0" y2="${hy + 70}"><stop offset="0" class="rb-smog-0"/><stop offset="0.45" class="rb-smog-1"/><stop offset="0.7" class="rb-smog-1"/><stop offset="1" class="rb-smog-0"/></linearGradient>
 <clipPath id="rb-planet-disc"><circle cx="${planet.x}" cy="${planet.y}" r="${planet.r}"/></clipPath>
 <clipPath id="rb-ring-back" transform="${tilt}">${half(true)}</clipPath><clipPath id="rb-ring-front" transform="${tilt}">${half(false)}</clipPath>
 ${wispGradient("rb-wisp-a", wispA[0], wispA.at(-1))}${wispGradient("rb-wisp-b", wispB[0], wispB.at(-1))}
@@ -1676,10 +1680,11 @@ ${wispGradient("rb-wisp-a", wispA[0], wispA.at(-1))}${wispGradient("rb-wisp-b", 
 <g class="rb-sky" aria-hidden="true">
 <rect class="rb-sky-fill" x="-300" y="-300" width="${W + 600}" height="${H + 600}" fill="url(#rb-sky)"/>
 <g class="rb-stars rb-stars-high">${high.join("")}</g><g class="rb-stars rb-stars-low">${low.join("")}</g>
-<g class="rb-wisps">${ribbon(wispA, 26, 8, "rb-wisp-a")}${ribbon(wispB, 18, 4, "rb-wisp-b")}</g>
+<g class="rb-wisps" filter="url(#rb-haze)">${ribbon(wispA, 26, 8, "rb-wisp-a")}${ribbon(wispB, 18, 4, "rb-wisp-b")}</g>
 <ellipse class="rb-horizon" cx="${W * 0.46}" cy="${hy}" rx="560" ry="150" fill="url(#rb-horizon)"/>
-<g class="rb-mesa" data-far="">${mesas.far.map((d) => `<path d="${moved(d)}"/>`).join("")}</g>
-<g class="rb-mesa">${mesas.near.map((d) => `<path d="${moved(d)}"/>`).join("")}</g>
+<g filter="url(#rb-smog-far)"><g class="rb-mesa" data-far="">${mesas.far.map((d) => `<path d="${moved(d)}"/>`).join("")}</g></g>
+<g filter="url(#rb-smog-near)"><g class="rb-mesa">${mesas.near.map((d) => `<path d="${moved(d)}"/>`).join("")}</g></g>
+<rect class="rb-smog" x="-300" y="${hy - 90}" width="${W + 600}" height="160" fill="url(#rb-smog)"/>
 <g transform="${tilt}" clip-path="url(#rb-ring-back)"><g class="rb-ring">${rings}</g>${band}</g>
 <circle class="rb-planet-glow" cx="${planet.x}" cy="${planet.y}" r="${planet.r + 6}"/>
 <circle class="rb-planet" cx="${planet.x}" cy="${planet.y}" r="${planet.r}" fill="url(#rb-planet)"/>

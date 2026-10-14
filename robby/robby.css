@@ -71,6 +71,8 @@
   --rb-horizon-o: 0.55;
   --rb-mesa-far: #0f2830;
   --rb-mesa-near: #0b2026;
+  --rb-smog: #16383b;
+  --rb-smog-o: 0.55;
   --rb-star: #f4ead6;
   --rb-star-o: 0.7;
   --rb-star-high-o: 0.7;
@@ -191,6 +193,8 @@
   --rb-horizon-o: 0.9;
   --rb-mesa-far: #e7dfcf;
   --rb-mesa-near: #ddd1c4;
+  --rb-smog: #f6efe1;
+  --rb-smog-o: 0.6;
   --rb-star: #14213d;
   --rb-star-o: 0;
   --rb-star-high-o: 0.16;
@@ -539,6 +543,9 @@
 .rb-mesa[data-far] path {
   fill: var(--rb-mesa-far);
 }
+/* A band of smog along the horizon that the blurred mesas sink into. */
+.rb-smog-0 { stop-color: var(--rb-smog); stop-opacity: 0; }
+.rb-smog-1 { stop-color: var(--rb-smog); stop-opacity: var(--rb-smog-o); }
 .rb-planet-a { stop-color: var(--rb-planet-a); }
 .rb-planet-b { stop-color: var(--rb-planet-b); }
 .rb-planet-c { stop-color: var(--rb-planet-c); }
