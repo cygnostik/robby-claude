@@ -1065,7 +1065,7 @@ for (const side of [-1, 1]) {
   const vents = [];
   for (const sign of [-1, 1]) for (let j = 0; j < 4; j++) {
     const x = sign * (8.8 + j * 1.8);
-    vents.push(`<path class="rb-vent" d="${k.pathOf(roundRect(x - 0.55, 186.5, x + 0.55, 193, 0.55, 3).map(([xx, z]) => f(xx, z)), true)}"/>`);
+    vents.push(`<path class="rb-vent" d="${k.pathOf(roundRect(x - 0.55, 186.5, x + 0.55, HOOD.top - 0.05, 0.55, 3).map(([xx, z]) => f(xx, z)), true)}"/>`);
   }
   // The bead rod and its beads, which chase while he computes.
   const rodF = along([-K2.rod.x, K2.rod.y, K2.rod.z], [1, 0, 0]);
