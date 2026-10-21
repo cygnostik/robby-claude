@@ -29,8 +29,6 @@ const PLATE_H = 4;
 const PLATE_FOOT = 6;
 const FLOOR = PLATE_TOP - PLATE_H - PLATE_FOOT;
 const DAIS_R = 44;
-const POST = { x: -73, y: -33, w: 6, d: 6, r: 1 };
-const POST_TOP = 232;
 const CONSOLE = { x: 64, y: -22, w: 60.3, d: 43.2, r: 2.5 };
 const CASTER = { r: 3.2 };
 const CAB_Z0 = PLATE_TOP + 9;
@@ -47,7 +45,7 @@ const PIECES = {
   core: { name: "Laboratory core (speculative)", say: "lab core · analyzer drum · relays D-12,000–18,500", move: [0, 0, 0] },
   pelvis: { name: "Pelvis and hip hinges", say: "pelvis · hip plates and crank levers · hides the operator's knees", move: [0, 0, 0] },
   legs: { name: "Legs and feet", say: "legs · 3 globes a side on an oval shoe · cable in the right shoe", move: [0, 0, 0] },
-  stand: { name: "Riser, gauge and console", say: "console · mic to voice relay to neon", move: [0, 0, 0] },
+  stand: { name: "Riser and console", say: "console · mic to voice relay to neon", move: [0, 0, 0] },
 };
 PIECES.brain.move = PIECES.head.move;
 const STAGGER = ["dome", "head", "armR", "armL", "chest"];
@@ -56,8 +54,6 @@ const SPRING = { stagger: 0.035, stiffness: 64, damping: 14.2, substeps: 4 };
 const P = k.fitProjection(
   [
     ...k.boxCorners(PLATE, FLOOR, PLATE_TOP),
-    [POST.x, POST.y, POST_TOP + 2],
-    [POST.x + POST.w, POST.y + POST.d, POST_TOP + 2],
     [0, 0, S.HEIGHT + PIECES.dome.move[2] + 1],
     [CONSOLE.x + CONSOLE.w, CONSOLE.y, CAB_HIGH],
     [CONSOLE.x + CONSOLE.w, CONSOLE.y + CONSOLE.d, PLATE_TOP],
@@ -357,7 +353,7 @@ function saddle(piece, F, a, start, s1, host, { tone = "mid", name, bias = 0 } =
   return shape;
 }
 
-// ---------------------------------------------------------------- stand: riser, dais, gauge
+// ---------------------------------------------------------------- stand: riser, dais
 const back = [];
 back.push(`<path class="iso-halo" d="${k.haloOf(PLATE, FLOOR, PLATE_H + PLATE_FOOT, P)}"/>`);
 
@@ -374,9 +370,6 @@ for (const [x, y] of byDepth(k.corners(PLATE, 24))) {
   slab("stand", PLATE, PLATE_TOP - PLATE_H, PLATE_H, { tone: "mid", steps: 8, bevel: 1.6, extra: Ln(groove, { tone: "lo" }) + extra, name: "stand.plate", bias: -2 });
 }
 {
-  const strip = { x: -84, y: PLATE.y + PLATE.d - 13, w: 200, d: 7, r: 1 };
-  const t = k.topTicks(strip.x + 4, strip.x + strip.w - 4, 4, 5, strip.y + 0.8, PLATE_TOP + 0.6, [2, 3.6], P);
-  slab("stand", strip, PLATE_TOP, 0.6, { tone: "lo", steps: 3, bevel: 0, extra: Ln(t.minor, { tone: "lo" }) + Ln(t.major, { tone: "mid" }) + Dots([at([strip.x + 2, strip.y + 3.5, PLATE_TOP + 0.6]), at([strip.x + strip.w - 2, strip.y + 3.5, PLATE_TOP + 0.6])], { size: 0.45 }), name: "stand.ruler" });
   const label = { x: -92, y: 16, w: 34, d: 14, r: 1.4 };
   const lz = PLATE_TOP + 0.8;
   const rules = [k.lineOnTop([label.x + 4, label.y + 4.5], [label.x + 24, label.y + 4.5], lz, P), k.lineOnTop([label.x + 4, label.y + 7.5], [label.x + 30, label.y + 7.5], lz, P), k.lineOnTop([label.x + 4, label.y + 10.5], [label.x + 18, label.y + 10.5], lz, P)].join("");
@@ -393,28 +386,6 @@ for (const [x, y] of byDepth(k.corners(PLATE, 24))) {
     Dots(G.dotsOf(F, 0, DAIS_R - 9, 16, P, { all: true }), { size: 0.45, tone: "mid" });
   const shape = record(A.cylinder(0, 0, DAIS_R, PLATE_TOP, -PLATE_TOP, { name: "stand.dais" }));
   put("stand", [0, 0, PLATE_TOP / 2], Sv(k.cylinder(0, 0, DAIS_R, PLATE_TOP, -PLATE_TOP, P, 120, 0.9), { tone: "mid", inner: Ln(k.sideArc(0, 0, DAIS_R, PLATE_TOP + 2, P, 80), { tone: "faint" }) }) + extra, { name: "stand.dais", shapes: [shape], bias: -1 });
-}
-// Height gauge: a post with a ruler strip in centimetres from the dais top, and a rider at 214.
-{
-  slab("stand", { x: POST.x - 7, y: POST.y - 7, w: POST.w + 14, d: POST.d + 14, r: 2 }, PLATE_TOP, 4, { tone: "mid", steps: 4, bevel: 0.6, extra: Dots(k.corners({ x: POST.x - 7, y: POST.y - 7, w: POST.w + 14, d: POST.d + 14 }, 2.6).map(([x, y]) => at([x, y, PLATE_TOP + 4])), { size: 0.45 }), name: "stand.gauge-base" });
-  slab("stand", POST, PLATE_TOP + 4, POST_TOP - PLATE_TOP - 4, { tone: "mid", steps: 3, bevel: 0.4, name: "stand.gauge-post" });
-  slab("stand", { x: POST.x + 0.6, y: POST.y + POST.d + 1.4, w: 4.8, d: 0.6, r: 0.2 }, PLATE_TOP + 4, POST_TOP - PLATE_TOP - 6, { tone: "lo", steps: 2, bevel: 0, name: "stand.gauge-strip", bias: 0.2 });
-  // Ticks on the strip's front face (y = face), rooted on its left edge.
-  const face = POST.y + POST.d + 2;
-  const minor = [];
-  const major = [];
-  for (let z = 0; z <= 225; z += 5) {
-    const long = z % 25 === 0;
-    (long ? major : minor).push(k.segment([POST.x + 0.6, face, z], [POST.x + 0.6 + (long ? 4.8 : 1.8), face, z], P));
-  }
-  const span = (POST_TOP - 2 - PLATE_TOP - 4) / 2;
-  put("stand", [POST.x + 3, face, 110], Ln(minor.join(""), { tone: "lo" }) + Ln(major.join(""), { tone: "mid" }), { name: "stand.gauge-ticks", bias: 0.3, shapes: [film("stand.gauge-ticks", [POST.x + 3, face + 0.03, PLATE_TOP + 4 + span], [[1, 0, 0], [0, 1, 0], [0, 0, 1]], [2.4, 0.03, span])] });
-  // The rider: a cursor block on the strip's face, with an index at 214 cm.
-  const rider = { x: POST.x - 0.6, y: face, w: POST.w + 1.2, d: 2.4, r: 0.6 };
-  const index = k.segment([rider.x + rider.w, rider.y + rider.d, S.HEIGHT], [rider.x + rider.w + 6, rider.y + rider.d, S.HEIGHT], P);
-  slab("stand", rider, S.HEIGHT - 3, 6, { tone: "hi", steps: 3, bevel: 0.5, extra: Ln(k.segment([rider.x, rider.y + rider.d, S.HEIGHT], [rider.x + rider.w, rider.y + rider.d, S.HEIGHT], P), { tone: "lit" }), name: "stand.gauge-rider" });
-  slab("stand", { x: rider.x + rider.w, y: rider.y + rider.d - 1.2, w: 6, d: 1.2, r: 0.3 }, S.HEIGHT - 0.3, 0.6, { tone: "hi", steps: 2, bevel: 0, extra: Ln(index, { tone: "lit" }), name: "stand.gauge-pointer" });
-  slab("stand", { x: rider.x + rider.w / 2 - 1, y: rider.y + rider.d, w: 2, d: 1.4, r: 0.4 }, S.HEIGHT + 0.6, 2, { tone: "mid", steps: 2, bevel: 0, name: "stand.gauge-screw" });
 }
 
 // ---------------------------------------------------------------- legs: oval shoes on soles, squat globes
@@ -1710,7 +1681,7 @@ const MATERIALS = [
   [/^stand\.console-top/, "cream"],
   [/^stand\.console-base/, "gunmetal"],
   [/^stand\.console(?=$|#)/, "enamel"],
-  [/^stand\.(knob|toggle|caster|mic|gooseneck|gauge-rider|gauge-pointer|gauge-screw|lamp-bezel|gland|console-handle|foot-flange)/, "chrome"],
+  [/^stand\.(knob|toggle|caster|mic|gooseneck|lamp-bezel|gland|console-handle|foot-flange)/, "chrome"],
   [/^stand\./, "cream"],
   [/^dome\.shell/, ""],
   [/^head\.(chassis|keyface)/, ""],
@@ -1759,7 +1730,7 @@ const DATA = {
 };
 
 const LABEL =
-  "Robby the Robot on a service riser: stacked-globe legs on oval shoes on a turntable dais, a squat pelvis with crank levers at the hips, a barrel chest with the beaded indicator panel and sample door, arms reaching forward from ball sockets, fat rubber rolls and a half ball ending in grey rubber mittens with two ribbed fingers in a V and a thumb, and a bullet head: a black hood with comb fins and two spinning ear rings, a clear cap over a gyro tower, and a clear front window over six relay keys, above a narrow brim lip and the blue neon voice tubes. A height gauge reads 214 cm; MGM's control console and microphone feed a cable into the right shoe.";
+  "Robby the Robot on a service riser: stacked-globe legs on oval shoes on a turntable dais, a squat pelvis with crank levers at the hips, a barrel chest with the beaded indicator panel and sample door, arms reaching forward from ball sockets, fat rubber rolls and a half ball ending in grey rubber mittens with two ribbed fingers in a V and a thumb, and a bullet head: a black hood with comb fins and two spinning ear rings, a clear cap over a gyro tower, and a clear front window over six relay keys, above a narrow brim lip and the blue neon voice tubes. MGM's control console and microphone feed a cable into the right shoe.";
 
 // The backdrop, after 1950s space painting (Bonestell, the Forbidden Planet one-sheet): a sky
 // graded to a low horizon behind his knees, flat-topped mesas kept close to the sky's own

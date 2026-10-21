@@ -2,7 +2,7 @@
 
 An interactive, researched anatomy of Robby the Robot from *Forbidden Planet* (MGM, 1956). The page has two parts:
 
-- **Fig 1** is a live isometric drawing of Robby, built from about 200 solid parts. He stands on a turntable dais beside MGM's rolling control panel, with a height gauge behind him. You can take him apart, and four buttons run his behaviours:
+- **Fig 1** is a live isometric drawing of Robby, built from about 200 solid parts. He stands on a turntable dais beside MGM's rolling control panel. You can take him apart, and four buttons run his behaviours:
   - **Speak**: the six relay keys strike, then the blue neon voice tubes light syllable by syllable while the console's VU needle follows the voice.
   - **Synthesize**: the sample door opens, the analyzer runs, and he produces one of the products he makes on screen (60 gallons of bourbon, 10 tons of isotope 217, emeralds, or a refusal for star sapphires).
   - **Order: fire on a man**: the inhibition latches the 6,501 relays D-12,000 to D-18,500 until the order is cancelled.

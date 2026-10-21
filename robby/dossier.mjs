@@ -118,10 +118,10 @@ const systems = [
   },
   {
     n: "09",
-    title: "Riser, gauge and console",
+    title: "Riser and console",
     rows: [
       ["prop", `Power came through a cable out of Robby's heel, or from onboard batteries${cite(10)}, run from a remote control panel on wheels${cite(11)}. Bonhams sold that auxiliary control panel with him and lists it at 17 × 23.75 × 39 in. The console in the figure is drawn at that size, with the off-camera microphone mounted on it${cite(11, 4)}.`],
-      ["spec", `The riser, turntable dais and height gauge are display furniture. The gauge's rider sits at 214 cm, and the cable runs from the console's gland to a connector on the right shoe.`],
+      ["spec", `The riser and turntable dais are display furniture. The cable runs from the console's gland to a connector on the right shoe.`],
     ],
   },
 ];
