@@ -714,7 +714,10 @@ function quadInside(angle, lit) {
 // at its tip. Out of the cut come the tool adaptor and a rubber mitten: two long fingers that
 // spread in a V and a short thumb on the inner side, drooping a little, as in the studio stills.
 const ARM = {
-  dir: [0.157, 0.892, -0.423],
+  // The arm's axis swings `out` from straight ahead toward its own side and hangs `down` below
+  // level: relaxed, a little out to the sides.
+  out: 28 * DEG,
+  down: 30 * DEG,
   rolls: [13.4, 12.9, 12.4, 11.9],
   roll: 4,
   neck: 0.86,
@@ -738,9 +741,10 @@ const HAND = {
   // cuff's end face and the rings turn to square with the drooped axis by y = `bend`. Thicker
   // than the fingers, it swells behind and round its sides, but its face runs flat and flush
   // into theirs. From y = 5.3 its sides follow the long fingers' outer sides and its back thins
-  // to theirs, so its last ring is their section, rounded as they are, and it is left open
-  // there: the finger roots show through, and the outline and bevels run on without a ledge.
-  palm: [[0, 3.6, 2.3, 2.6], [0.8, 3.95, 1.9, 2.75], [1.8, 4.35, 1.7, 2.8], [3, 4.7, 1.67, 2.8], [4.2, 4.92, 1.66, 2.7], [5.3, 5.05, 1.66, 2.35], [6.3, 5.3, 1.66, 2.05], [6.8, 5.45, 1.66, 1.82], [7.3, 5.62, 1.65, 1.65]],
+  // to theirs, so its last ring is their section, a hair inside it and rounded as they are, and
+  // it is left open there: the finger roots show through, and the outline and bevels run on
+  // without a ledge.
+  palm: [[0, 3.6, 2.3, 2.6], [0.8, 3.95, 1.9, 2.75], [1.8, 4.35, 1.7, 2.8], [3, 4.7, 1.67, 2.8], [4.2, 4.92, 1.66, 2.7], [5.3, 5.05, 1.66, 2.35], [6.3, 5.3, 1.66, 2.05], [6.8, 5.41, 1.62, 1.72], [7.3, 5.55, 1.57, 1.57]],
   bend: 2,
   // The long fingers lean `spread` off the axis each way and their inner sides meet the middle
   // at y = `crotch`, rounded into a U of radius `fillet`. Along a finger, t runs from where its
@@ -755,6 +759,13 @@ const sectionOf = (w, h, back = h) => roundRect(-w, -back, w, h, Math.min(w, (h 
 const sectionRing = (F, s, w, h, back = h) => sectionOf(w, h, back).map(([x, y]) => G.add3(G.add3(F.o, G.mul3(F.a, s)), G.add3(G.mul3(F.u, x), G.mul3(F.v, y))));
 // How much a crease or rib pinches a digit at distance d from its neck: a round shoulder.
 const pinchOf = (d, neck) => (neck.depth && d < neck.reach ? 1 - neck.depth * (1 - Math.sqrt(1 - (1 - d / neck.reach) ** 2)) : 1);
+// A face's normal with all but `keep` of its tilt along `axis` taken out, to shade a body as if it
+// ran straight; a face that is nearly all tilt, like an end cap, keeps its own.
+function straightened(normal, axis, keep = 0) {
+  const flat = G.sub3(normal, G.mul3(axis, G.dot3(normal, axis) * (1 - keep)));
+  const size = Math.hypot(...flat);
+  return size < 0.2 ? normal : G.mul3(flat, 1 / size);
+}
 // The part of a section ring that faces the viewer, as a polyline.
 function frontOf(F, s, w, h) {
   const ring = sectionOf(w, h);
@@ -772,7 +783,8 @@ function frontOf(F, s, w, h) {
 // A flat rubber digit along F (a along it, u across its face, v through it, toward the viewer):
 // convex lofted segments of the rounded-rectangle section, half hw across and ht through, that
 // taper a little, pinch at a crease and at ribs, and close into a rounded, squarish tip. Gives
-// its segments back to front, each with the grooves and sheen that lie on it, and its box.
+// its segments root to tip, each with its depth and the grooves and sheen that lie on it, and
+// its box.
 function digitOf(F, { hw, ht, taper, root, length, crease, ribs, tip }, { from, name, cut }) {
   const necks = [crease, ...(ribs ? ribs.at.map((at) => ({ at, depth: ribs.depth, reach: ribs.reach })) : [])];
   const ends = [{ at: root, depth: 0 }, ...necks, { at: length, depth: 0 }];
@@ -785,20 +797,18 @@ function digitOf(F, { hw, ht, taper, root, length, crease, ribs, tip }, { from, 
   const scaleOf = (s, i = indexOf(s)) => thin(s) * pinchOf(s - ends[i].at, ends[i]) * pinchOf(ends[i + 1].at - s, ends[i + 1]) * close(s);
   const point = (s, x, y) => G.add3(G.add3(F.o, G.mul3(F.a, s)), G.add3(G.mul3(F.u, x), G.mul3(F.v, y)));
   // Shaded as if it ran straight: a face's tilt along the digit, where a pinch narrows it, is
-  // dropped from its tone, and halved over the ribs, so the tones run in clean bands down the
-  // digit and the accordion still reads. The tip's rounding keeps its own.
+  // dropped from its tone, all but a quarter of it over the ribs, so the tones run in clean bands
+  // down the digit and the accordion still reads. Over the tip's rounding it eases back to all of
+  // its tilt.
   const shade = (mid, normal) => {
     const s = G.dot3(G.sub3(mid, F.o), F.a);
-    if (s > length - tip) return normal;
-    const keep = ribs && s > ribs.at[0] - ribs.reach ? 0.5 : 0;
-    const flat = G.sub3(normal, G.mul3(F.a, G.dot3(normal, F.a) * (1 - keep)));
-    const size = Math.hypot(...flat);
-    return size < 0.2 ? normal : G.mul3(flat, 1 / size);
+    if (s >= length) return normal;
+    return straightened(normal, F.a, s > length - tip ? ((s - length + tip) / tip) ** 2 : ribs && s > ribs.at[0] - ribs.reach ? 0.25 : 0);
   };
   const segments = [];
   for (let i = 0; i + 1 < ends.length; i++) {
     const [a, b] = [ends[i].at, ends[i + 1].at];
-    const stations = new Map([[a, a], [b, b]]);
+    const stations = new Map([[a.toFixed(3), a], [b.toFixed(3), b]]);
     const add = (s) => s >= a && s <= b && stations.set(s.toFixed(3), s);
     for (const f of [0.12, 0.3, 0.5, 0.72, 1]) {
       if (ends[i].depth) add(a + Math.min(ends[i].reach * f, (b - a) / 2));
@@ -810,8 +820,6 @@ function digitOf(F, { hw, ht, taper, root, length, crease, ribs, tip }, { from, 
   }
   // The segment that ends[i] starts, or of those from i to j, the one drawn last.
   const front = (i, j = i) => segments.slice(i, j + 1).reduce((best, one) => (one.depth > best.depth ? one : best));
-  // A groove across the face at each pinch, dark in the valley, on the nearer of its two segments.
-  necks.forEach((neck, n) => (front(n, n + 1).details += `<path class="rb-groove" d="${k.pathOf(frontOf(F, neck.at, hw * scaleOf(neck.at), ht * scaleOf(neck.at)).map(at))}"/>`));
   // The sheen of moulded rubber, on a ribbed finger: a soft band down the flat face, toward the
   // lit side, from where it leaves the palm to its first rib, then a streak across each rib's
   // crest, on the side that faces the light, and one across the tip. The plain thumb has none.
@@ -833,16 +841,19 @@ function digitOf(F, { hw, ht, taper, root, length, crease, ribs, tip }, { from, 
     }
     return k.pathOf([...left, ...right.reverse()], true);
   };
-  const stops = [from, ...necks.map((neck) => neck.at), length - tip * 0.3];
+  const stops = [from, ...necks.map((neck) => neck.at)];
   if (ribs) front(0, 1).details += `<path class="rb-sheen" d="${lens(stops[0], stops[2], lit * 0.2 - 0.26, lit * 0.2 + 0.26, true)}"/>`;
-  // Each crest lies on the segment its rib starts; past the first, stops[m] is ends[m].
-  if (ribs) stops.slice(2, -1).forEach((s, j) => {
+  // Each crest lies on the segment its rib starts: from the crease on, stops[m] is ends[m].
+  if (ribs) stops.slice(2).forEach((s, j) => {
     const m = 2 + j;
-    const next = m + 2 === stops.length ? s + Math.min(1, tip * 0.7) : stops[m + 1];
+    const next = m + 1 === stops.length ? s + Math.min(1, tip * 0.7) : stops[m + 1];
     const mid = (s + next) / 2 + ahead * 0.12 * (next - s);
     const half = 0.1 * (next - s);
     front(m).details += `<path class="rb-sheen" d="${lens(mid - half, mid + half, lit * 0.1 - 0.42, lit * 0.1 + 0.42, false)}"/>`;
   });
+  // A groove across the face at each pinch, dark in the valley, on the nearer of its two segments,
+  // over the sheen.
+  necks.forEach((neck, n) => (front(n, n + 1).details += `<path class="rb-groove" d="${k.pathOf(frontOf(F, neck.at, hw * scaleOf(neck.at), ht * scaleOf(neck.at)).map(at))}"/>`));
   const shape = record(A.prism(F, sectionOf(hw, ht), root, length, { name, cut, seated: true }));
   return { segments, shape };
 }
@@ -899,19 +910,28 @@ for (const side of [1, -1]) {
   }
   const ballId = `${piece}.shoulder`;
   const ball = record(A.ball(centre, SHOULDER.R, { name: ballId, cut: [chestSolid] }));
-  put(piece, G.add3(centre, G.mul3(d, SHOULDER.R * 0.5)), `<clipPath id="rb-shoulder${tag}"><path d="${k.pathOf(G.hullOf(outside), true)}"/></clipPath><g clip-path="url(#rb-shoulder${tag})">${Sv(G.sphereOf(centre, SHOULDER.R, P), { tone: "hi" })}${glossBall(centre, SHOULDER.R)}${rimOn(G.frameOf(centre, [0, 0, 1], [1, 0, 0], [0, 1, 0]), sphereBody(SHOULDER.R).radius, sphereBody(SHOULDER.R).slope, -SHOULDER.R * 0.97, SHOULDER.R * 0.97)}</g>`, { name: ballId, shapes: [ball] });
-  const dir = G.unit3([side * ARM.dir[0], ARM.dir[1], ARM.dir[2]]);
+  const ballSvg = `<clipPath id="rb-shoulder${tag}"><path d="${k.pathOf(G.hullOf(outside), true)}"/></clipPath><g clip-path="url(#rb-shoulder${tag})">${Sv(G.sphereOf(centre, SHOULDER.R, P), { tone: "hi" })}${glossBall(centre, SHOULDER.R)}${rimOn(G.frameOf(centre, [0, 0, 1], [1, 0, 0], [0, 1, 0]), sphereBody(SHOULDER.R).radius, sphereBody(SHOULDER.R).slope, -SHOULDER.R * 0.97, SHOULDER.R * 0.97)}</g>`;
+  const dir = [side * Math.sin(ARM.out) * Math.cos(ARM.down), Math.cos(ARM.out) * Math.cos(ARM.down), -Math.sin(ARM.down)];
   const across = G.unit3(G.cross3([0, 0, 1], dir));
   const AF = G.frameOf(centre, dir, across, G.cross3(dir, across));
-  // The rolls start where the ball's cross-section meets the first roll's neck.
+  // The rolls start where the ball's cross-section meets the first roll's neck. The first two
+  // wrap the ball's cap, so they and the ball are one item, drawn back to front: the plane where
+  // the first roll leaves the ball has the rolls on one side and the ball's visible body on the
+  // other, so whichever side faces the viewer goes last.
   let s = Math.sqrt(SHOULDER.R ** 2 - (ARM.rolls[0] * ARM.neck) ** 2);
+  const wrap = [];
   ARM.rolls.forEach((R, index) => {
     const h = S.reach(R, R * ARM.neck, 2.4, ARM.roll / 2);
     const body = S.bulb({ R, c: s + ARM.roll / 2, below: h, above: h, p: 2.4 });
     const cut = index === 0 ? [ball, chestSolid] : index === 1 ? [ball] : undefined;
-    bodyOn(piece, AF, body, s, s + ARM.roll, { tone: "hi", name: `${piece}.sleeve`, count: 18, cut, seated: false, gloss: { width: 0.07 } });
+    const options = { tone: "hi", name: `${piece}.sleeve`, count: 18, cut, seated: false, gloss: { width: 0.07 } };
+    if (cut) wrap.push(bodyParts(piece, AF, body, s, s + ARM.roll, options));
+    else bodyOn(piece, AF, body, s, s + ARM.roll, options);
     s += ARM.roll;
   });
+  const facing = G.dot3(dir, V) > 0;
+  const rolls = (facing ? wrap : [...wrap].reverse()).map((part) => part.svg).join("");
+  put(piece, G.add3(centre, G.mul3(d, SHOULDER.R * 0.5)), facing ? ballSvg + rolls : rolls + ballSvg, { name: ballId, shapes: [ball, ...wrap.flatMap((part) => part.shapes)] });
   const L = ARM.lip;
   const lipH = S.reach(L.R, L.end, 2.4, L.length / 2);
   bodyOn(piece, AF, S.bulb({ R: L.R, c: s + L.length / 2, below: lipH, above: lipH, p: 2.4 }), s, s + L.length, { tone: "hi", name: `${piece}.lip`, count: 10 });
@@ -991,10 +1011,17 @@ for (const side of [1, -1]) {
     return { shape, outline, svg: tone > 3 ? `<path class="iso-top" d="${outline}"/>` : `<path class="iso-shade" data-shade="${tone}" d="${outline}"/>` };
   });
   // Back to front: the webs, the fingers and the thumb with their grooves and sheen, then the
-  // thicker palm over their roots.
+  // thicker palm over their roots. The palm waists and flares on its way up, so it goes in
+  // convex pieces, one between each pair of rings, moulded together like the digits' segments,
+  // and open at the top. Past the bend its sides are shaded as if they ran straight up the
+  // drooped axis, so its bevels keep one tone each through the waist and flare.
   const digitParts = [...fingers, thumb].flatMap((one) => one.segments).sort((a, b) => a.depth - b.depth);
-  const palmPaths = convexPaths(loft(palmRings).filter((face) => face !== palmRings[palmRings.length - 1]), P);
-  const parts = [...webs, ...digitParts.map((part) => ({ outline: part.paths.outline, svg: fillOf(part.paths) + part.details })), { outline: palmPaths.outline, svg: fillOf(palmPaths) }];
+  const palmShade = (mid, normal) => (G.dot3(G.sub3(mid, pivot), hd) < HAND.bend ? normal : straightened(normal, hd));
+  const palmParts = palmRings.slice(1).map((ring, i) => {
+    const paths = convexPaths(loft([palmRings[i], ring], { bottom: i === 0, top: false }), P, { shade: palmShade });
+    return { outline: paths.outline, svg: fillOf(paths) };
+  });
+  const parts = [...webs, ...digitParts.map((part) => ({ outline: part.paths.outline, svg: fillOf(part.paths) + part.details })), ...palmParts];
   const shapes = [cuff, ...palmShapes, ...fingers.map((one) => one.shape), thumb.shape, ...webs.map((web) => web.shape)];
   put(piece, onHand(0, palmTop), cuffSvg + mouldOf(parts), { name: `${piece}.hand`, shapes });
 }
@@ -1110,15 +1137,17 @@ const capR = (z) => S.shellRadius(z) - 0.8;
 const HOOD_LOW = headFloor(0, S.REAR.y0) - 0.2;
 const HOOD_FLAT = Math.max(headFloor(0, S.SHELL.R), headFloor(0, -S.SHELL.R), brimTopZ(0, CH.front)) + 0.2;
 const windowX = CH.front * Math.tan(HOOD.window);
-// Side quads between matching rings, and the two end caps.
-function loft(rings) {
+// Side quads between matching rings, and the end caps unless `bottom` or `top` is false, for an
+// open end.
+function loft(rings, { bottom = true, top = true } = {}) {
   const faces = [];
   for (let i = 0; i + 1 < rings.length; i++) {
     const lo = rings[i];
     const hi = rings[i + 1];
     for (let j = 0; j < lo.length; j++) faces.push([lo[j], lo[(j + 1) % lo.length], hi[(j + 1) % lo.length], hi[j]]);
   }
-  faces.push(rings[rings.length - 1], [...rings[0]].reverse());
+  if (top) faces.push(rings[rings.length - 1]);
+  if (bottom) faces.push([...rings[0]].reverse());
   return faces;
 }
 const levelsOf = (z0, z1, step = 1.5) => {
@@ -1730,7 +1759,7 @@ const DATA = {
 };
 
 const LABEL =
-  "Robby the Robot on a service riser: stacked-globe legs on oval shoes on a turntable dais, a squat pelvis with crank levers at the hips, a barrel chest with the beaded indicator panel and sample door, arms reaching forward from ball sockets, fat rubber rolls and a half ball ending in grey rubber mittens with two ribbed fingers in a V and a thumb, and a bullet head: a black hood with comb fins and two spinning ear rings, a clear cap over a gyro tower, and a clear front window over six relay keys, above a narrow brim lip and the blue neon voice tubes. MGM's control console and microphone feed a cable into the right shoe.";
+  "Robby the Robot on a service riser: stacked-globe legs on oval shoes on a turntable dais, a squat pelvis with crank levers at the hips, a barrel chest with the beaded indicator panel and sample door, arms hanging forward and a little out from ball sockets, fat rubber rolls and a half ball ending in grey rubber mittens with two ribbed fingers in a V and a thumb, and a bullet head: a black hood with comb fins and two spinning ear rings, a clear cap over a gyro tower, and a clear front window over six relay keys, above a narrow brim lip and the blue neon voice tubes. MGM's control console and microphone feed a cable into the right shoe.";
 
 // The backdrop, after 1950s space painting (Bonestell, the Forbidden Planet one-sheet): a sky
 // graded to a low horizon behind his knees, flat-topped mesas kept close to the sky's own

@@ -290,12 +290,6 @@
   --anatomy-lit: var(--rb-gm-lit);
   --anatomy-dot: #a7b3c6;
 }
-.rb-m-rubber .rb-gloss {
-  opacity: 0.12;
-}
-.rb-m-rubber .rb-gloss[data-g="halo"] {
-  opacity: 0.04;
-}
 /* One moulding: its parts' outlines at twice the weight under their fills, so only the outer
    half of the joint silhouette shows. */
 .iso-line.rb-mould {
