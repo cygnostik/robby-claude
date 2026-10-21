@@ -64,8 +64,9 @@ export function flapCorners({ hinge, along, up, out, width, height, thick, angle
 }
 
 // Any convex solid from its faces (each a list of 3D points), shaded like hexaPaths.
-// Faces seen edge-on are skipped; the fill and outline are the hull of every corner.
-export function convexPaths(faces, P, { topTone = true } = {}) {
+// Faces seen edge-on are skipped; the fill and outline are the hull of every corner. `shade`,
+// given a face's midpoint and outward normal, gives the normal its tone is taken from.
+export function convexPaths(faces, P, { topTone = true, shade } = {}) {
   const V = viewOf(P);
   const L = lightOf(P);
   const all = faces.flat();
@@ -85,7 +86,8 @@ export function convexPaths(faces, P, { topTone = true } = {}) {
     const visible = dot3(normal, V) > 1e-6;
     seen.push({ face, visible });
     if (!visible) continue;
-    const tone = topTone && normal[2] > 0.92 ? 4 : bandOf(dot3(normal, L));
+    const lit = shade ? shade(mid, normal) : normal;
+    const tone = topTone && lit[2] > 0.92 ? 4 : bandOf(dot3(lit, L));
     buckets[tone].push(pathOf(face.map((p) => iso(p, P)), true));
   }
   const hull = pathOf(hullOf(all.map((p) => iso(p, P))), true);

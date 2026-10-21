@@ -272,20 +272,21 @@
   --anatomy-shade-2: #161b23;
   --anatomy-shade-3: #1e242e;
 }
+/* The mittens are moulded in a matte grey rubber, lighter than the glossy black arms. */
 .it.rb-m-rubber {
-  --anatomy-paper: #2b3038;
-  --anatomy-face: #343a44;
-  --anatomy-top: #4f5865;
-  --anatomy-shade-0: #1a1e24;
-  --anatomy-shade-1: #232831;
-  --anatomy-shade-2: #2d333c;
-  --anatomy-shade-3: #3a414c;
-  --anatomy-lit-top: #5d6878;
-  --anatomy-lit-shade: #3f4753;
+  --anatomy-paper: #3b4049;
+  --anatomy-face: #464c56;
+  --anatomy-top: #6a727e;
+  --anatomy-shade-0: #272b31;
+  --anatomy-shade-1: #31363e;
+  --anatomy-shade-2: #3d434c;
+  --anatomy-shade-3: #4c535d;
+  --anatomy-lit-top: #78818e;
+  --anatomy-lit-shade: #535a65;
   --anatomy-hi: var(--rb-gm-line);
-  --anatomy-mid: #6b7586;
-  --anatomy-lo: #4d5564;
-  --anatomy-faint: #3a414c;
+  --anatomy-mid: #808894;
+  --anatomy-lo: #5e6570;
+  --anatomy-faint: #4c535d;
   --anatomy-lit: var(--rb-gm-lit);
   --anatomy-dot: #a7b3c6;
 }
@@ -294,6 +295,26 @@
 }
 .rb-m-rubber .rb-gloss[data-g="halo"] {
   opacity: 0.04;
+}
+/* One moulding: its parts' outlines at twice the weight under their fills, so only the outer
+   half of the joint silhouette shows. */
+.iso-line.rb-mould {
+  stroke-width: calc(var(--anatomy-weight) * 2);
+}
+/* A crease or accordion rib pressed across a rubber finger. */
+.rb-groove {
+  fill: none;
+  stroke: var(--anatomy-shade-0);
+  stroke-width: calc(var(--anatomy-weight) * 1.5);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* The soft sheen down a moulded face. */
+.rb-sheen {
+  fill: var(--rb-gloss);
+  stroke: none;
+  opacity: 0.07;
+  pointer-events: none;
 }
 .it.rb-m-chrome,
 .rb-mat-chrome {

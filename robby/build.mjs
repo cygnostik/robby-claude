@@ -740,9 +740,8 @@ function quadInside(angle, lit) {
 // into a socket at the barrel's front corner, right beside the panel. It is the only joint, so
 // everything after it shares one straight axis: four fat rubber rolls out of the ball's front
 // face, each a little smaller, then a rolled lip ring round the base of a half ball, cut flat
-// at its tip. Out of the cut come the tool adaptor and a rubber mitten: two long fingers
-// stacked one over the other in a V and a short thumb on the inner side, drooping a little, as
-// in the studio stills.
+// at its tip. Out of the cut come the tool adaptor and a rubber mitten: two long fingers that
+// spread in a V and a short thumb on the inner side, drooping a little, as in the studio stills.
 const ARM = {
   dir: [0.157, 0.892, -0.423],
   rolls: [13.4, 12.9, 12.4, 11.9],
@@ -752,48 +751,166 @@ const ARM = {
   half: { R: 11.2, cut: 6.3 },
   adaptor: { r: 5.8, length: 2.4 },
 };
+// The mitten, after the studio stills: one moulding of matte grey rubber, flat like a paddle. A
+// palm that necks into the cuff and widens toward the knuckles, two long fingers that split from
+// it with a round crotch and spread in a V, each flat across its face, with a soft crease part
+// way up, four accordion ribs and a rounded, squarish tip, and a short flat thumb angled off the
+// inner side. It droops from the cuff and turns about its own axis toward the camera, as Robby
+// shows his hands in the publicity stills. Lengths are in the hand's plane: x across, y along
+// the drooped axis from the middle of the cuff's end face; z runs through the hand.
 const HAND = {
-  droop: 20 * DEG,
-  cuff: { r: 5.2, length: 1 },
-  palm: { length: 5.6, poly: roundRect(-3.8, -5.5, 3.8, 5.5, 2.6) },
-  finger: { R: 2.45, neck: 2.05 },
-  digits: [
-    { u: 0, v: 2.9, turn: [0, 8], length: 12 },
-    { u: 0, v: -2.9, turn: [0, -8], length: 12 },
-    { u: 2.4, v: 0.4, turn: [14, 0], length: 7, thumb: true },
-  ],
+  droop: 32 * DEG,
+  // The share of the turn that would square the hand's face to the view.
+  square: 0.5,
+  cuff: { r: 5.5, length: 1.1 },
+  // [y, half width, front, back] up the palm, z out of its mid-plane: the first ring sits in the
+  // cuff's end face and the rings turn to square with the drooped axis by y = `bend`. Thicker
+  // than the fingers, it swells behind and round its sides, but its face runs flat and flush
+  // into theirs. From y = 5.3 its sides follow the long fingers' outer sides and its back thins
+  // to theirs, so its last ring is their section, rounded as they are, and it is left open
+  // there: the finger roots show through, and the outline and bevels run on without a ledge.
+  palm: [[0, 3.6, 2.3, 2.6], [0.8, 3.95, 1.9, 2.75], [1.8, 4.35, 1.7, 2.8], [3, 4.7, 1.67, 2.8], [4.2, 4.92, 1.66, 2.7], [5.3, 5.05, 1.66, 2.35], [6.3, 5.3, 1.66, 2.05], [6.8, 5.45, 1.66, 1.82], [7.3, 5.62, 1.65, 1.65]],
+  bend: 2,
+  // The long fingers lean `spread` off the axis each way and their inner sides meet the middle
+  // at y = `crotch`, rounded into a U of radius `fillet`. Along a finger, t runs from where its
+  // axis passes the crotch: a root buried in the palm, a crease, ribs, and the tip's rounding.
+  finger: { hw: 2.7, ht: 1.65, taper: 0.1, spread: 19 * DEG, crotch: 7.36, fillet: 1, root: -3.2, length: 12.2, crease: { at: 4.4, depth: 0.07, reach: 0.9 }, ribs: { at: [7.0, 8.0, 9.0, 10.0], depth: 0.13, reach: 0.5 }, tip: 1.7 },
+  // The thumb leaves the palm's inner side at (x, y), `angle` off the axis.
+  thumb: { hw: 1.85, ht: 1.2, taper: 0.08, angle: 65 * DEG, x: 2.77, y: 2.8, root: 0, length: 8.6, crease: { at: 4.6, depth: 0.07, reach: 0.7 }, tip: 1.4, fillet: 0.8 },
 };
-// A rubber finger: segments that swell between knuckle creases, ending in a round tip.
-function fingerBody(length, R, neck, knuckles) {
-  const cuts = [0, ...knuckles.map((t) => t * length), length];
-  const p = 2.2;
-  const radius = (s) => {
-    const index = Math.max(0, Math.min(cuts.length - 2, cuts.findIndex((cut, i) => s >= cut && s <= cuts[i + 1])));
-    const a = cuts[index];
-    const b = cuts[index + 1];
-    const last = index === cuts.length - 2;
-    const c = last ? a + (b - a) * 0.3 : (a + b) / 2;
-    const h = s < c ? S.reach(R, neck, p, c - a) : last ? b - c : S.reach(R, neck, p, b - c);
-    const t = Math.min(0.999999, Math.abs(s - c) / h);
-    return R * Math.pow(1 - Math.pow(t, p), 1 / p);
-  };
-  const slope = (s) => (radius(Math.min(length, s + 0.01)) - radius(Math.max(0, s - 0.01))) / (Math.min(length, s + 0.01) - Math.max(0, s - 0.01));
-  return { radius, slope };
-}
-// The visible part of a prism's cross-section at s: a knuckle groove that ends on the outline.
-function grooveOf(F, poly, s) {
-  const seen = poly.map((p, i) => {
-    const q = poly[(i + 1) % poly.length];
-    const n = G.add3(G.mul3(F.u, q[1] - p[1]), G.mul3(F.v, p[0] - q[0]));
-    return G.dot3(n, V) > 1e-6;
+// A ring of the digits' and palm's section, a rounded rectangle half w across and h through,
+// at s along a frame (u across, v through).
+const sectionOf = (w, h, back = h) => roundRect(-w, -back, w, h, Math.min(w, (h + back) / 2) * 0.8, 3);
+const sectionRing = (F, s, w, h, back = h) => sectionOf(w, h, back).map(([x, y]) => G.add3(G.add3(F.o, G.mul3(F.a, s)), G.add3(G.mul3(F.u, x), G.mul3(F.v, y))));
+// How much a crease or rib pinches a digit at distance d from its neck: a round shoulder.
+const pinchOf = (d, neck) => (neck.depth && d < neck.reach ? 1 - neck.depth * (1 - Math.sqrt(1 - (1 - d / neck.reach) ** 2)) : 1);
+// The part of a section ring that faces the viewer, as a polyline.
+function frontOf(F, s, w, h) {
+  const ring = sectionOf(w, h);
+  const n = ring.length;
+  const seen = ring.map((_, j) => {
+    const [q, o] = [ring[(j + 1) % n], ring[(j - 1 + n) % n]];
+    return G.dot3(G.add3(G.mul3(F.u, q[1] - o[1]), G.mul3(F.v, o[0] - q[0])), V) > 0;
   });
-  const start = seen.findIndex((on, i) => on && !seen[(i - 1 + seen.length) % seen.length]);
-  if (start < 0) return "";
+  const start = seen.findIndex((on, j) => on && !seen[(j - 1 + n) % n]);
+  if (start < 0) return [];
   const run = [];
-  for (let k2 = 0; k2 < poly.length && seen[(start + k2) % poly.length]; k2++) run.push(poly[(start + k2) % poly.length]);
-  run.push(poly[(start + run.length) % poly.length]);
-  return path(run.map(([x, y]) => G.add3(G.add3(G.add3(F.o, G.mul3(F.a, s)), G.mul3(F.u, x)), G.mul3(F.v, y))));
+  for (let j = start; seen[j % n] && run.length < n; j++) run.push(ring[j % n]);
+  return run.map(([x, y]) => G.add3(G.add3(F.o, G.mul3(F.a, s)), G.add3(G.mul3(F.u, x), G.mul3(F.v, y))));
 }
+// A flat rubber digit along F (a along it, u across its face, v through it, toward the viewer):
+// convex lofted segments of the rounded-rectangle section, half hw across and ht through, that
+// taper a little, pinch at a crease and at ribs, and close into a rounded, squarish tip. Gives
+// its segments back to front, each with the grooves and sheen that lie on it, and its box.
+function digitOf(F, { hw, ht, taper, root, length, crease, ribs, tip }, { from, name, cut }) {
+  const necks = [crease, ...(ribs ? ribs.at.map((at) => ({ at, depth: ribs.depth, reach: ribs.reach })) : [])];
+  const ends = [{ at: root, depth: 0 }, ...necks, { at: length, depth: 0 }];
+  const thin = (s) => 1 - (taper * (s - root)) / (length - root);
+  const close = (s) => {
+    const u = (s - (length - tip)) / tip;
+    return u <= 0 ? 1 : Math.max(0.06, Math.pow(1 - Math.pow(Math.min(1, u), 2.5), 1 / 2.5));
+  };
+  const indexOf = (s) => Math.max(0, ends.findIndex((end, i) => i + 1 < ends.length && s <= ends[i + 1].at));
+  const scaleOf = (s, i = indexOf(s)) => thin(s) * pinchOf(s - ends[i].at, ends[i]) * pinchOf(ends[i + 1].at - s, ends[i + 1]) * close(s);
+  const point = (s, x, y) => G.add3(G.add3(F.o, G.mul3(F.a, s)), G.add3(G.mul3(F.u, x), G.mul3(F.v, y)));
+  // Shaded as if it ran straight: a face's tilt along the digit, where a pinch narrows it, is
+  // dropped from its tone, and halved over the ribs, so the tones run in clean bands down the
+  // digit and the accordion still reads. The tip's rounding keeps its own.
+  const shade = (mid, normal) => {
+    const s = G.dot3(G.sub3(mid, F.o), F.a);
+    if (s > length - tip) return normal;
+    const keep = ribs && s > ribs.at[0] - ribs.reach ? 0.5 : 0;
+    const flat = G.sub3(normal, G.mul3(F.a, G.dot3(normal, F.a) * (1 - keep)));
+    const size = Math.hypot(...flat);
+    return size < 0.2 ? normal : G.mul3(flat, 1 / size);
+  };
+  const segments = [];
+  for (let i = 0; i + 1 < ends.length; i++) {
+    const [a, b] = [ends[i].at, ends[i + 1].at];
+    const stations = new Map([[a, a], [b, b]]);
+    const add = (s) => s >= a && s <= b && stations.set(s.toFixed(3), s);
+    for (const f of [0.12, 0.3, 0.5, 0.72, 1]) {
+      if (ends[i].depth) add(a + Math.min(ends[i].reach * f, (b - a) / 2));
+      if (ends[i + 1].depth) add(b - Math.min(ends[i + 1].reach * f, (b - a) / 2));
+    }
+    if (i + 2 === ends.length) for (const u of [0, 0.3, 0.5, 0.65, 0.78, 0.88, 0.95, 1]) add(length - tip * (1 - u));
+    const rings = [...stations.values()].sort((p, q) => p - q).map((s) => sectionRing(F, s, hw * scaleOf(s, i), ht * scaleOf(s, i)));
+    segments.push({ paths: convexPaths(loft(rings), P, { shade }), depth: G.dot3(point((a + b) / 2, 0, 0), V), details: "" });
+  }
+  // The segment that ends[i] starts, or of those from i to j, the one drawn last.
+  const front = (i, j = i) => segments.slice(i, j + 1).reduce((best, one) => (one.depth > best.depth ? one : best));
+  // A groove across the face at each pinch, dark in the valley, on the nearer of its two segments.
+  necks.forEach((neck, n) => (front(n, n + 1).details += `<path class="rb-groove" d="${k.pathOf(frontOf(F, neck.at, hw * scaleOf(neck.at), ht * scaleOf(neck.at)).map(at))}"/>`));
+  // The sheen of moulded rubber, on a ribbed finger: a soft band down the flat face, toward the
+  // lit side, from where it leaves the palm to its first rib, then a streak across each rib's
+  // crest, on the side that faces the light, and one across the tip. The plain thumb has none.
+  const lit = Math.sign(G.dot3(F.u, HV)) || 1;
+  const ahead = Math.sign(G.dot3(F.a, HV)) || 1;
+  const lens = (s0, s1, x0, x1, along) => {
+    const rows = 14;
+    const [left, right] = [[], []];
+    for (let j = 0; j <= rows; j++) {
+      const f = j / rows;
+      const swell = Math.pow(Math.sin(Math.PI * f), 0.6);
+      const s = along ? s0 + (s1 - s0) * f : (s0 + s1) / 2;
+      const half = along ? 0 : ((s1 - s0) / 2) * swell + 0.01;
+      const w = hw * scaleOf(s);
+      const x = along ? (x0 + x1) / 2 : x0 + (x1 - x0) * f;
+      const reach = along ? ((x1 - x0) / 2) * swell + 0.01 : 0;
+      left.push(at(point(s - half, (x - reach) * w, ht * scaleOf(s - half))));
+      right.push(at(point(s + half, (x + reach) * w, ht * scaleOf(s + half))));
+    }
+    return k.pathOf([...left, ...right.reverse()], true);
+  };
+  const stops = [from, ...necks.map((neck) => neck.at), length - tip * 0.3];
+  if (ribs) front(0, 1).details += `<path class="rb-sheen" d="${lens(stops[0], stops[2], lit * 0.2 - 0.26, lit * 0.2 + 0.26, true)}"/>`;
+  // Each crest lies on the segment its rib starts; past the first, stops[m] is ends[m].
+  if (ribs) stops.slice(2, -1).forEach((s, j) => {
+    const m = 2 + j;
+    const next = m + 2 === stops.length ? s + Math.min(1, tip * 0.7) : stops[m + 1];
+    const mid = (s + next) / 2 + ahead * 0.12 * (next - s);
+    const half = 0.1 * (next - s);
+    front(m).details += `<path class="rb-sheen" d="${lens(mid - half, mid + half, lit * 0.1 - 0.42, lit * 0.1 + 0.42, false)}"/>`;
+  });
+  const shape = record(A.prism(F, sectionOf(hw, ht), root, length, { name, cut, seated: true }));
+  return { segments, shape };
+}
+// The fillet of radius r in the corner between two straight edges in the hand's plane, each a
+// point and its direction away from the corner: the arc, and the patch that fills the corner
+// behind it, reaching e into each edge's side and `deep` back past the corner.
+function filletOf([p1, d1], [p2, d2], r, { e = 0.35, deep = 1.5, steps = 10 } = {}) {
+  const cross = d1[0] * d2[1] - d1[1] * d2[0];
+  const t = ((p2[0] - p1[0]) * d2[1] - (p2[1] - p1[1]) * d2[0]) / cross;
+  const corner = [p1[0] + d1[0] * t, p1[1] + d1[1] * t];
+  const half = Math.acos(Math.max(-1, Math.min(1, d1[0] * d2[0] + d1[1] * d2[1]))) / 2;
+  const mid = [d1[0] + d2[0], d1[1] + d2[1]];
+  const b = [mid[0] / Math.hypot(...mid), mid[1] / Math.hypot(...mid)];
+  const centre = [corner[0] + (b[0] * r) / Math.sin(half), corner[1] + (b[1] * r) / Math.sin(half)];
+  const reach = r / Math.tan(half);
+  const touch = [d1, d2].map((d) => [corner[0] + d[0] * reach, corner[1] + d[1] * reach]);
+  const into = [d1, d2].map(([x, y]) => (y * b[0] - x * b[1] > 0 ? [-y, x] : [y, -x]));
+  const a1 = Math.atan2(touch[0][1] - centre[1], touch[0][0] - centre[0]);
+  let a2 = Math.atan2(touch[1][1] - centre[1], touch[1][0] - centre[0]);
+  // The short way round, past the corner's side of the circle.
+  const away = Math.atan2(-b[1], -b[0]);
+  const wrap = (a) => ((a % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
+  if (Math.abs(wrap(a1 + wrap(a2 - a1) / 2 - away)) > Math.PI / 2) a2 += wrap(a2 - a1) > 0 ? -2 * Math.PI : 2 * Math.PI;
+  else a2 = a1 + wrap(a2 - a1);
+  const arc = Array.from({ length: steps + 1 }, (_, j) => {
+    const a = a1 + ((a2 - a1) * j) / steps;
+    return [centre[0] + r * Math.cos(a), centre[1] + r * Math.sin(a)];
+  });
+  const patch = [[corner[0] - b[0] * deep, corner[1] - b[1] * deep], [touch[0][0] + into[0][0] * e, touch[0][1] + into[0][1] * e], ...arc, [touch[1][0] + into[1][0] * e, touch[1][1] + into[1][1] * e]];
+  return { corner, arc, patch };
+}
+// One moulding from several parts, back to front: every outline first at twice the weight, then
+// every fill over them, so only the outer half of the joint silhouette shows and the parts run
+// into each other without a line, as the rubber does.
+const mouldOf = (parts) =>
+  parts.map((part) => `<path class="iso-line iso-edge rb-mould" data-tone="hi" d="${part.outline}"/>`).join("") + parts.map((part) => part.svg).join("");
+// A part's faces alone: no outline, and no fill under them, whose antialiased edge would draw a
+// hairline where the parts meet.
+const fillOf = (paths) => k.solidSvg({ ...paths, outline: "" }).replace(/<path class="iso-line iso-edge"[^>]*d=""\/>/, "").replace(/<path class="iso-fill"[^>]*\/>/, "");
 for (const side of [1, -1]) {
   const piece = side > 0 ? "armR" : "armL";
   const tag = side > 0 ? "R" : "L";
@@ -835,36 +952,80 @@ for (const side of [1, -1]) {
   const Ad = ARM.adaptor;
   const adaptor = discOn(piece, AF, s, s + Ad.length, Ad.r, { tone: "mid", name: `${piece}.adaptor`, inner: Ln(G.arcOf(AF, s + Ad.length / 2, Ad.r, P), { tone: "lo" }) });
   s += Ad.length;
-  // The cuff, the mitten and its fingers are one item, drawn back to front, since the fingers
-  // grow out of the mitten and the mitten out of the cuff.
-  const hand = [];
-  const cuff = record(A.disc(AF, s, s + HAND.cuff.length, HAND.cuff.r, { name: `${piece}.cuff` }));
-  hand.push({ depth: -Infinity, svg: Sv(G.disc(s, s + HAND.cuff.length, HAND.cuff.r, AF, P), { tone: "mid" }), shape: cuff });
-  s += HAND.cuff.length;
-  // The mitten droops from the cuff's end.
-  const pivot = G.add3(AF.o, G.mul3(AF.a, s - 1));
+  // The cuff and the mitten are one item, drawn back to front: the cuff, then the mitten's parts
+  // moulded into one piece.
+  const Cf = HAND.cuff;
+  const cuff = record(A.disc(AF, s, s + Cf.length, Cf.r, { name: `${piece}.cuff` }));
+  const cuffSvg = Sv(G.disc(s, s + Cf.length, Cf.r, AF, P), { tone: "mid" });
+  s += Cf.length;
+  // The mitten droops about the middle of the cuff's end face, and turns about its own axis
+  // toward squaring its face to the view. Its inner side, toward the body, lies `side` along
+  // `broad`.
+  const pivot = G.add3(AF.o, G.mul3(AF.a, s));
   const hd = G.unit3(G.sub3(G.mul3(AF.a, Math.cos(HAND.droop)), G.mul3(AF.v, Math.sin(HAND.droop))));
-  const HF = G.frameOf(pivot, hd, AF.u, G.cross3(hd, AF.u));
-  const palm = record(A.prism(HF, HAND.palm.poly, 0, HAND.palm.length, { name: `${piece}.palm`, cut: [cuff, adaptor], seated: true }));
-  hand.push({ depth: -1e9, svg: Sv(G.prismOf(HF, HAND.palm.poly, 0, HAND.palm.length, P), { tone: "hi" }), shape: palm });
-  const root = HAND.palm.length - 1.4;
-  const digits = [];
-  for (const [index, digit] of HAND.digits.entries()) {
-    const u = digit.thumb ? side * digit.u : digit.u;
-    const [tu, tv] = [digit.thumb ? side * digit.turn[0] : digit.turn[0], digit.turn[1]].map((deg) => Math.tan(deg * DEG));
-    const fdir = G.unit3(G.add3(HF.a, G.add3(G.mul3(HF.u, tu), G.mul3(HF.v, tv))));
-    const o = G.add3(G.add3(G.add3(HF.o, G.mul3(HF.a, root)), G.mul3(HF.u, u)), G.mul3(HF.v, digit.v));
-    const fu = G.unit3(G.sub3(HF.u, G.mul3(fdir, G.dot3(HF.u, fdir))));
-    const FF = G.frameOf(o, fdir, fu, G.cross3(fdir, fu));
-    const knuckles = digit.thumb ? [0.5] : [0.38, 0.68];
-    const body = fingerBody(digit.length, HAND.finger.R * (digit.thumb ? 0.92 : 1), HAND.finger.neck * (digit.thumb ? 0.92 : 1), knuckles);
-    const ribs = digit.thumb ? [] : [0.86, 0.91];
-    const part = bodyParts(piece, FF, body, 0, digit.length, { tone: "hi", name: `${piece}.finger${index}`, count: 30, seams: [...knuckles, ...ribs].map((t) => t * digit.length), cut: digit.thumb ? [palm, ...digits] : [palm], gloss: false });
-    digits.push(part.shape);
-    hand.push({ depth: G.dot3(part.ref, V), svg: part.svg, shape: part.shape });
-  }
-  hand.sort((a, b) => a.depth - b.depth);
-  put(piece, G.add3(pivot, G.mul3(hd, HAND.palm.length / 2)), hand.map((part) => part.svg).join(""), { name: `${piece}.hand`, shapes: hand.map((part) => part.shape) });
+  const level = G.unit3(G.cross3(hd, AF.u));
+  const square = G.unit3(G.cross3(V, hd));
+  const toward = Math.atan2(G.dot3(square, level), G.dot3(square, AF.u));
+  const turn = HAND.square * (Math.abs(toward) > Math.PI / 2 ? toward - Math.sign(toward) * Math.PI : toward);
+  const broad = G.add3(G.mul3(AF.u, Math.cos(turn)), G.mul3(level, Math.sin(turn)));
+  const through = G.dot3(G.cross3(hd, broad), V) > 0 ? G.cross3(hd, broad) : G.cross3(broad, hd);
+  const HF = G.frameOf(pivot, hd, broad, through);
+  const onHand = (x, y, z = 0) => G.add3(pivot, G.add3(G.add3(G.mul3(broad, x), G.mul3(hd, y)), G.mul3(through, z)));
+  const frameAt = ([x, y], angle) => G.frameOf(onHand(x, y), G.add3(G.mul3(hd, Math.cos(angle)), G.mul3(broad, Math.sin(angle))), G.sub3(G.mul3(broad, Math.cos(angle)), G.mul3(hd, Math.sin(angle))), through);
+  // The palm: its first ring in the cuff's end face, the rest turning square to the drooped axis
+  // by y = bend, centred on it.
+  const palmRings = HAND.palm.map(([y, w, front, back]) => {
+    const f = Math.min(1, y / HAND.bend);
+    const normal = G.unit3(G.sub3(G.mul3(AF.a, Math.cos(HAND.droop * f)), G.mul3(AF.v, Math.sin(HAND.droop * f))));
+    const wide = G.unit3(G.sub3(broad, G.mul3(normal, G.dot3(broad, normal))));
+    const deep = G.dot3(G.cross3(normal, wide), through) > 0 ? G.cross3(normal, wide) : G.cross3(wide, normal);
+    return sectionRing(G.frameOf(onHand(0, y), normal, wide, deep), y ? 0 : 0.05, w, front, back);
+  });
+  const palmTop = HAND.palm[HAND.palm.length - 1][0];
+  const palmShapes = [
+    record(A.prism(HF, sectionOf(4.75, 2.5, 2.8), -1.6, 3, { name: `${piece}.palm`, cut: [cuff, adaptor], seated: true })),
+    record(A.prism(HF, sectionOf(5.62, 1.67, 2.8), 3, palmTop, { name: `${piece}.palm` })),
+  ];
+  // The long fingers, the inner one first.
+  const Fg = HAND.finger;
+  const fingers = [side, -side].map((sign, index) => {
+    const base = [sign * Fg.hw * Math.cos(Fg.spread), Fg.crotch - Fg.hw * Math.sin(Fg.spread)];
+    const F = frameAt(base, sign * Fg.spread);
+    return { sign, base, ...digitOf(F, Fg, { from: 1, name: `${piece}.finger${index}`, cut: [...palmShapes] }) };
+  });
+  fingers[1].shape.cut.push(fingers[0].shape);
+  const Th = HAND.thumb;
+  const thumbFrame = frameAt([side * Th.x, Th.y], side * Th.angle);
+  const thumb = digitOf(thumbFrame, Th, { name: `${piece}.thumb`, cut: [...palmShapes, ...fingers.map((one) => one.shape)] });
+  // In the hand's plane: one side of a digit, as a point and its direction out along it; `out`
+  // picks the side along its frame's u.
+  const thinAt = (D, t) => 1 - (D.taper * (t - D.root)) / (D.length - D.root);
+  const edgeOf = (base, angle, D, out) => {
+    const dir = [Math.sin(angle), Math.cos(angle)];
+    const normal = [Math.cos(angle) * out, -Math.sin(angle) * out];
+    const edge = (t) => [base[0] + dir[0] * t + normal[0] * D.hw * thinAt(D, t), base[1] + dir[1] * t + normal[1] * D.hw * thinAt(D, t)];
+    const [p, q] = [edge(0), edge(5)];
+    const run = Math.hypot(q[0] - p[0], q[1] - p[1]);
+    return [p, [(q[0] - p[0]) / run, (q[1] - p[1]) / run]];
+  };
+  // The crotch between the long fingers, and the one between the thumb and the inner finger.
+  const crotch = filletOf(...fingers.map((one) => edgeOf(one.base, one.sign * Fg.spread, Fg, -one.sign)), Fg.fillet);
+  const thumbEdge = edgeOf([side * Th.x, Th.y], side * Th.angle, Th, -side);
+  const fingerEdge = edgeOf(fingers[0].base, side * Fg.spread, Fg, side);
+  const nook = filletOf(fingerEdge, thumbEdge, Th.fillet);
+  const webs = [crotch, nook].map((fillet, index) => {
+    const shape = record(A.prism(G.frameOf(pivot, through, broad, hd), fillet.patch, -Fg.ht, Fg.ht, { name: `${piece}.web${index}`, cut: [...palmShapes, ...fingers.map((one) => one.shape), thumb.shape], seated: true }));
+    const outline = k.pathOf(fillet.patch.map(([x, y]) => at(onHand(x, y))), true);
+    const tone = G.bandOf(G.dot3(through, G.lightOf(P)));
+    return { shape, outline, svg: tone > 3 ? `<path class="iso-top" d="${outline}"/>` : `<path class="iso-shade" data-shade="${tone}" d="${outline}"/>` };
+  });
+  // Back to front: the webs, the fingers and the thumb with their grooves and sheen, then the
+  // thicker palm over their roots.
+  const digitParts = [...fingers, thumb].flatMap((one) => one.segments).sort((a, b) => a.depth - b.depth);
+  const palmPaths = convexPaths(loft(palmRings).filter((face) => face !== palmRings[palmRings.length - 1]), P);
+  const parts = [...webs, ...digitParts.map((part) => ({ outline: part.paths.outline, svg: fillOf(part.paths) + part.details })), { outline: palmPaths.outline, svg: fillOf(palmPaths) }];
+  const shapes = [cuff, ...palmShapes, ...fingers.map((one) => one.shape), thumb.shape, ...webs.map((web) => web.shape)];
+  put(piece, onHand(0, palmTop), cuffSvg + mouldOf(parts), { name: `${piece}.hand`, shapes });
 }
 
 // ---------------------------------------------------------------- head: voice collar, brim lip, key chassis
@@ -1598,7 +1759,7 @@ const DATA = {
 };
 
 const LABEL =
-  "Robby the Robot on a service riser: stacked-globe legs on oval shoes on a turntable dais, a squat pelvis with crank levers at the hips, a barrel chest with the beaded indicator panel and sample door, arms reaching forward from ball sockets, fat rubber rolls and a half ball ending in three-fingered rubber mittens, and a bullet head: a black hood with comb fins and two spinning ear rings, a clear cap over a gyro tower, and a clear front window over six relay keys, above a narrow brim lip and the blue neon voice tubes. A height gauge reads 214 cm; MGM's control console and microphone feed a cable into the right shoe.";
+  "Robby the Robot on a service riser: stacked-globe legs on oval shoes on a turntable dais, a squat pelvis with crank levers at the hips, a barrel chest with the beaded indicator panel and sample door, arms reaching forward from ball sockets, fat rubber rolls and a half ball ending in grey rubber mittens with two ribbed fingers in a V and a thumb, and a bullet head: a black hood with comb fins and two spinning ear rings, a clear cap over a gyro tower, and a clear front window over six relay keys, above a narrow brim lip and the blue neon voice tubes. A height gauge reads 214 cm; MGM's control console and microphone feed a cable into the right shoe.";
 
 // The backdrop, after 1950s space painting (Bonestell, the Forbidden Planet one-sheet): a sky
 // graded to a low horizon behind his knees, flat-topped mesas kept close to the sky's own
